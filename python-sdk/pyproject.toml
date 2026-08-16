@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tunnelmate"
+version = "0.1.0"
+description = "Python SDK and CLI for TunnelMate reverse tunnels"
+requires-python = ">=3.11"
+dependencies = ["httpx>=0.27,<1", "pydantic>=2.10,<3"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "ruff>=0.9"]
+
+[project.scripts]
+tunnelmate = "tunnelmate.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["tunnelmate"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

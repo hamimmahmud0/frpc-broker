@@ -1,6 +1,7 @@
 #include "agent.h"
 #include "tunnelmate/net.h"
 #include "tunnelmate/crypto.h"
+#include "tunnelmate/tls.h"
 
 /* Data plane: for each OPEN_STREAM, connect a TLS 1.2 data connection to
    the broker, send DATA_BIND(sid, agent_secret), wait for DATA_BIND_OK,
@@ -22,48 +23,36 @@ static void astream_unlink(tm_agent_app *a, tm_astream *st) {
     if (a->stream_count > 0) a->stream_count--;
 }
 
-static void astream_finish_close(tm_agent_app *a, tm_astream *st) {
-    uv_timer_stop(&st->connect_timer);
-    if (st->broker_io) { tm_io_close(st->broker_io); st->broker_io = NULL; }
-    else if (st->broker_ssl) { SSL_free(st->broker_ssl); }
-    st->broker_ssl = NULL;
-    if (st->local_io) { tm_io_close(st->local_io); st->local_io = NULL; }
-    if (!uv_is_closing((uv_handle_t *)&st->broker_sock))
-        uv_close((uv_handle_t *)&st->broker_sock, NULL);
-    if (!uv_is_closing((uv_handle_t *)&st->local_sock))
-        uv_close((uv_handle_t *)&st->local_sock, NULL);
-    if (!uv_is_closing((uv_handle_t *)&st->connect_timer))
-        uv_close((uv_handle_t *)&st->connect_timer, NULL);
-    tm_frame_reader_free(st->fr);
-    free(st->pending_buf);
-    free(st->pend_buf);
-    astream_unlink(a, st);
-    tm_log_debug(a->log, "stream_closed",
-                 "sid=%u up=%llu down=%llu bound=%d leof=%d beof=%d",
-                 st->sid, (unsigned long long)st->up_bytes,
-                 (unsigned long long)st->down_bytes, st->bound,
-                 st->local_eof, st->broker_eof);
-    free(st);
-}
-
 static void stream_sock_closed(uv_handle_t *h) {
     tm_astream *st = (tm_astream *)h->data;
-    if (--st->closing_refs == 0) astream_finish_close(st->a, st);
+    if (--st->closing_refs == 0) free(st);
 }
 
 void tm_astream_close(tm_agent_app *a, tm_astream *st) {
     if (st->closing) return;
     st->closing = true;
     uv_timer_stop(&st->connect_timer);
-    if (st->connecting) {
-        /* a connect is in flight: its callback will run after this; defer
-           the free until both sockets have finished closing */
-        st->closing_refs = 2;
-        uv_close((uv_handle_t *)&st->broker_sock, stream_sock_closed);
-        uv_close((uv_handle_t *)&st->local_sock, stream_sock_closed);
-        return;
-    }
-    astream_finish_close(a, st);
+    if (st->broker_io) { tm_io_close(st->broker_io); st->broker_io = NULL; }
+    else if (st->broker_ssl) SSL_free(st->broker_ssl);
+    st->broker_ssl = NULL;
+    if (st->local_io) { tm_io_close(st->local_io); st->local_io = NULL; }
+    tm_frame_reader_free(st->fr);
+    st->fr = NULL;
+    free(st->pending_buf);
+    free(st->pend_buf);
+    astream_unlink(a, st);
+    tm_log_debug(a->log, "stream_closed", NULL, NULL,
+                 "sid=%u up=%llu down=%llu bound=%d leof=%d beof=%d",
+                 st->sid, (unsigned long long)st->up_bytes,
+                 (unsigned long long)st->down_bytes, st->bound,
+                 st->local_eof, st->broker_eof);
+    st->closing_refs = 3;
+    st->broker_sock.data = st;
+    st->local_sock.data = st;
+    st->connect_timer.data = st;
+    uv_close((uv_handle_t *)&st->broker_sock, stream_sock_closed);
+    uv_close((uv_handle_t *)&st->local_sock, stream_sock_closed);
+    uv_close((uv_handle_t *)&st->connect_timer, stream_sock_closed);
 }
 
 static void flush_pend(tm_io *io, uint8_t **buf, size_t *len, size_t *cap);
@@ -85,10 +74,9 @@ static void relay_broker_read(tm_io *io, const uint8_t *data, size_t len, void *
     (void)io;
     if (st->closing) return;
     st->up_bytes += len;
-    fprintf(stderr, "DBG br_read +%zu up=%llu\n", len, (unsigned long long)st->up_bytes);
     if (!st->local_io) {
         /* local connect still in flight: queue until bound */
-        if (st->pending_len + len > TM_IO_HIGH_WATER) {
+        if (st->pending_len + len > TM_IO_HIGH_WATER + 65536u) {
             tm_astream_close(st->a, st);
             return;
         }
@@ -100,11 +88,14 @@ static void relay_broker_read(tm_io *io, const uint8_t *data, size_t len, void *
         }
         memcpy(st->pending_buf + st->pending_len, data, len);
         st->pending_len += len;
+        if (st->pending_len >= TM_IO_HIGH_WATER) {
+            tm_io_pause_read(st->broker_io);
+            st->broker_paused = true;
+        }
         return;
     }
     int r = tm_io_write(st->local_io, data, len);
     if (r == TM_ERR_BUSY) {
-        fprintf(stderr, "DBG br_read BUSY pend=%zu\n", st->pending_len);
         if (st->pending_len + len > st->pending_cap) {
             size_t ncap = st->pending_cap ? st->pending_cap * 2 : 16384;
             while (ncap < st->pending_len + len) ncap *= 2;
@@ -162,7 +153,6 @@ static void relay_broker_low(tm_io *io, void *arg) {
     tm_astream *st = (tm_astream *)arg;
     (void)io;
     if (st->closing) return;
-    fprintf(stderr, "DBG broker_low pend=%zu local_paused=%d\n", st->pend_len, st->local_paused);
     flush_pend(st->broker_io, &st->pend_buf, &st->pend_len, &st->pend_cap);
     if (st->pend_len) { astream_maybe_close(st); return; }
     if (st->local_eof && !st->broker_fin) {
@@ -181,7 +171,6 @@ static void relay_local_read(tm_io *io, const uint8_t *data, size_t len, void *a
     (void)io;
     if (st->closing) return;
     st->down_bytes += len;
-    fprintf(stderr, "DBG local_read +%zu down=%llu\n", len, (unsigned long long)st->down_bytes);
     int r = tm_io_write(st->broker_io, data, len);
     if (r == TM_ERR_BUSY) {
         if (st->pend_len + len > st->pend_cap) {
@@ -221,7 +210,6 @@ static void relay_local_low(tm_io *io, void *arg) {
     tm_astream *st = (tm_astream *)arg;
     (void)io;
     if (st->closing) return;
-    fprintf(stderr, "DBG local_low pend=%zu br_paused=%d\n", st->pending_len, st->broker_paused);
     flush_pend(st->local_io, &st->pending_buf, &st->pending_len, &st->pending_cap);
     if (st->pending_len) { astream_maybe_close(st); return; }
     if (st->broker_eof && !st->local_fin) {
@@ -259,18 +247,17 @@ static void local_connected(uv_connect_t *req, int status) {
     tm_io_start(st->local_io);
     tm_io_start(st->broker_io);
     st->bound = true;
-    /* deliver bytes that arrived before the local connect finished */
-    if (st->pending_buf) {
-        if (tm_io_write(st->local_io, st->pending_buf, st->pending_len) != TM_OK) {
-            free(st->pending_buf);
-            st->pending_buf = NULL;
-            st->pending_len = st->pending_cap = 0;
-            tm_astream_close(st->a, st);
-            return;
-        }
-        free(st->pending_buf);
-        st->pending_buf = NULL;
-        st->pending_len = st->pending_cap = 0;
+    /* Deliver pre-bind bytes incrementally. A single write larger than the
+       downstream high watermark would be rejected even though the relay can
+       drain it safely in bounded chunks. relay_local_low continues the flush. */
+    flush_pend(st->local_io, &st->pending_buf, &st->pending_len,
+               &st->pending_cap);
+    if (st->pending_len) {
+        tm_io_pause_read(st->broker_io);
+        st->broker_paused = true;
+    } else if (st->broker_paused) {
+        st->broker_paused = false;
+        tm_io_resume_read(st->broker_io);
     }
     if (st->broker_eof) {
         tm_io_shutdown_send(st->local_io);
@@ -412,6 +399,11 @@ void tm_astream_open(tm_agent_app *a, uint32_t sid) {
     st->broker_sock.data = st;
     st->broker_ssl = SSL_new(a->tls_ctx);
     if (!st->broker_ssl) { tm_astream_close(a, st); return; }
+    if (tm_tls_configure_client_ssl(st->broker_ssl, a->cfg.broker_host,
+                                    a->cfg.verify_ca) != TM_OK) {
+        tm_astream_close(a, st);
+        return;
+    }
     st->broker_io = tm_io_ssl_new(a->loop, (uv_stream_t *)&st->broker_sock,
                                   st->broker_ssl, false, false, &(tm_io_cbs){
                                       .ready_cb = data_conn_ready,

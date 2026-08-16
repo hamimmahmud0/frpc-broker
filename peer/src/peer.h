@@ -53,6 +53,7 @@ struct tm_psess {
     bool local_fin, broker_fin;
     bool closing;
     bool connecting;
+    int closing_refs;
     bool got_hello;
     uint8_t *pending_buf;  /* bytes that arrived before local bound */
     size_t pending_len;
@@ -98,6 +99,7 @@ struct tm_peer {
     bool udp_closing;
     uint8_t *udp_outq;
     size_t udp_outq_len, udp_outq_cap, udp_outq_off;
+    size_t udp_outq_packets;
     uint64_t next_flow_id;
     tm_pflow *udp_flows;
 

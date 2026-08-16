@@ -14,8 +14,11 @@ typedef struct {
     uv_buf_t wbuf;
     char *data;
     bool writing;
-    bool closed;
+    bool close_pending;
+    bool handle_closing;
     tm_broker *b;
+    char rbuf[16384];
+    size_t rbuf_len;
 } tm_ipc_conn;
 
 static void ipc_conn_free(tm_ipc_conn *pc) {
@@ -28,10 +31,20 @@ static void ipc_conn_close_cb(uv_handle_t *h) {
     ipc_conn_free(pc);
 }
 
-static void ipc_conn_close(tm_ipc_conn *pc) {
-    if (pc->closed) return;
-    pc->closed = true;
+static void ipc_conn_close_handle(tm_ipc_conn *pc) {
+    if (pc->handle_closing) return;
+    pc->handle_closing = true;
     uv_close((uv_handle_t *)&pc->pipe, ipc_conn_close_cb);
+}
+
+static void ipc_conn_close(tm_ipc_conn *pc) {
+    if (pc->handle_closing || pc->close_pending) return;
+    if (pc->writing) {
+        pc->close_pending = true;
+        uv_read_stop((uv_stream_t *)&pc->pipe);
+        return;
+    }
+    ipc_conn_close_handle(pc);
 }
 
 static void ipc_write_done(uv_write_t *req, int status) {
@@ -40,10 +53,11 @@ static void ipc_write_done(uv_write_t *req, int status) {
     pc->writing = false;
     free(pc->data);
     pc->data = NULL;
+    if (pc->close_pending) ipc_conn_close_handle(pc);
 }
 
 static void ipc_send(tm_ipc_conn *pc, const char *json) {
-    if (pc->writing || pc->closed) return;
+    if (pc->writing || pc->close_pending || pc->handle_closing) return;
     size_t len = strlen(json);
     pc->data = tm_xmalloc(len + 2);
     memcpy(pc->data, json, len);
@@ -120,6 +134,8 @@ static void ipc_handle_op(tm_ipc_conn *pc, cJSON *req) {
         cJSON *closedj = cJSON_GetObjectItemCaseSensitive(req, "closed");
         cJSON *agent_secretj = cJSON_GetObjectItemCaseSensitive(req, "agent_secret");
         cJSON *tokenj = cJSON_GetObjectItemCaseSensitive(req, "shared_token");
+        cJSON *agent_hmacj = cJSON_GetObjectItemCaseSensitive(req, "agent_secret_hmac");
+        cJSON *token_hmacj = cJSON_GetObjectItemCaseSensitive(req, "shared_token_hmac");
         cJSON *preferj = cJSON_GetObjectItemCaseSensitive(req, "prefer_port");
         if (!cJSON_IsString(idj) || !cJSON_IsString(protoj)) {
             reply_err(pc, "tunnel_id and proto required");
@@ -155,10 +171,18 @@ static void ipc_handle_op(tm_ipc_conn *pc, cJSON *req) {
         }
         uint8_t hmac[32];
         char agent_hmac[65], token_hmac[65];
-        tm_hmac_sha256(b->hmac_key, sizeof(b->hmac_key),
-                       (const uint8_t *)agent_secret, strlen(agent_secret), hmac);
-        tm_sha256_hex(hmac, 32, agent_hmac);
-        if (token[0]) {
+        if (cJSON_IsString(agent_hmacj) && strlen(agent_hmacj->valuestring) == 64) {
+            snprintf(agent_hmac, sizeof(agent_hmac), "%s", agent_hmacj->valuestring);
+            agent_secret[0] = 0; /* restore path: no plaintext capability */
+        } else {
+            tm_hmac_sha256(b->hmac_key, sizeof(b->hmac_key),
+                           (const uint8_t *)agent_secret, strlen(agent_secret), hmac);
+            tm_sha256_hex(hmac, 32, agent_hmac);
+        }
+        if (cJSON_IsString(token_hmacj) && strlen(token_hmacj->valuestring) == 64) {
+            snprintf(token_hmac, sizeof(token_hmac), "%s", token_hmacj->valuestring);
+            token[0] = 0;
+        } else if (token[0]) {
             tm_hmac_sha256(b->hmac_key, sizeof(b->hmac_key),
                            (const uint8_t *)token, strlen(token), hmac);
             tm_sha256_hex(hmac, 32, token_hmac);
@@ -178,8 +202,10 @@ static void ipc_handle_op(tm_ipc_conn *pc, cJSON *req) {
         cJSON *x = cJSON_CreateObject();
         cJSON_AddStringToObject(x, "tunnel_id", tun->id);
         cJSON_AddNumberToObject(x, "public_port", tun->public_port);
-        cJSON_AddStringToObject(x, "agent_secret", agent_secret);
+        if (agent_secret[0]) cJSON_AddStringToObject(x, "agent_secret", agent_secret);
+        cJSON_AddStringToObject(x, "agent_secret_hmac", agent_hmac);
         if (token[0]) cJSON_AddStringToObject(x, "shared_token", token);
+        if (token_hmac[0]) cJSON_AddStringToObject(x, "shared_token_hmac", token_hmac);
         reply_ok(pc, x);
         return;
     }
@@ -243,6 +269,7 @@ static void ipc_handle_op(tm_ipc_conn *pc, cJSON *req) {
         }
         cJSON *x = cJSON_CreateObject();
         cJSON_AddStringToObject(x, "secret", secret);
+        cJSON_AddStringToObject(x, "secret_hmac", hex);
         reply_ok(pc, x);
         return;
     }
@@ -280,19 +307,19 @@ static void ipc_conn_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *bu
         if (nread < 0) ipc_conn_close(pc);
         return;
     }
-    if (pc->b->ipc_rbuf_len + (size_t)nread > sizeof(pc->b->ipc_rbuf) - 1) {
+    if (pc->rbuf_len + (size_t)nread > sizeof(pc->rbuf) - 1) {
         free(buf->base);
         ipc_conn_close(pc);
         return;
     }
-    memcpy(pc->b->ipc_rbuf + pc->b->ipc_rbuf_len, buf->base, (size_t)nread);
-    pc->b->ipc_rbuf_len += (size_t)nread;
+    memcpy(pc->rbuf + pc->rbuf_len, buf->base, (size_t)nread);
+    pc->rbuf_len += (size_t)nread;
     free(buf->base);
     /* process complete lines */
-    char *line_start = pc->b->ipc_rbuf;
+    char *line_start = pc->rbuf;
     for (;;) {
         char *nl = memchr(line_start, '\n',
-                          pc->b->ipc_rbuf + pc->b->ipc_rbuf_len - line_start);
+                          pc->rbuf + pc->rbuf_len - line_start);
         if (!nl) break;
         *nl = 0;
         cJSON *req = cJSON_Parse(line_start);
@@ -304,9 +331,9 @@ static void ipc_conn_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *bu
         }
         line_start = nl + 1;
     }
-    size_t remaining = pc->b->ipc_rbuf + pc->b->ipc_rbuf_len - line_start;
-    memmove(pc->b->ipc_rbuf, line_start, remaining);
-    pc->b->ipc_rbuf_len = remaining;
+    size_t remaining = pc->rbuf + pc->rbuf_len - line_start;
+    memmove(pc->rbuf, line_start, remaining);
+    pc->rbuf_len = remaining;
 }
 
 static void ipc_conn_alloc(uv_handle_t *handle, size_t suggested, uv_buf_t *buf) {

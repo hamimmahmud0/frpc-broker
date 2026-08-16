@@ -20,11 +20,15 @@ typedef struct tm_alflow tm_alflow;
 typedef struct {
     char broker_host[256];
     uint16_t broker_port;
+    uint16_t broker_udp_port;
+    tm_proto proto;
     char tunnel_id[TM_TUNNEL_ID_LEN + 1];
     char agent_secret[TM_MAX_SECRET + 1];
     char local_host[256];
     uint16_t local_port;
     char name[TM_MAX_AGENT_NAME + 1];
+    char ca_path[512];
+    bool verify_ca;
     tm_log_level log_level;
     long long heartbeat_interval_ms;
     long long idle_timeout_ms;
@@ -97,6 +101,7 @@ struct tm_agent_app {
     uv_timer_t hb_timer;
     uv_timer_t hs_timer;
     bool connected;
+    bool connecting;
     bool got_hello;
     bool registered;
     uint64_t last_rx_ms;
@@ -120,6 +125,7 @@ struct tm_agent_app {
     bool udp_closing;
     uint8_t *udp_outq;
     size_t udp_outq_len, udp_outq_cap, udp_outq_off;
+    size_t udp_outq_packets;
     tm_alflow *udp_flows;
     bool shutting_down;
 };

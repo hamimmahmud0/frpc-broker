@@ -455,7 +455,9 @@ static void conn_read(tm_io *io, const uint8_t *data, size_t len, void *arg) {
     while (f) {
         conn_frame(c, f);
         tm_frame_free(f);
-        if (c->closing) return;
+        /* Role promotion transfers the frame reader to an agent/stream and
+           clears c->fr. Do not continue parsing through the old owner. */
+        if (c->closing || !c->fr) return;
         f = tm_frame_reader_feed(c->fr, NULL, 0, &err);
         if (err) { c->b->protocol_errors++; conn_close(c, "malformed frame"); return; }
     }

@@ -19,7 +19,7 @@ if(TUNNELMATE_SANITIZE)
   add_link_options(-fsanitize=address,undefined)
 endif()
 
-find_package(OpenSSL REQUIRED)
+find_package(OpenSSL 3.2 REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBUV REQUIRED IMPORTED_TARGET libuv)
 

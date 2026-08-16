@@ -1,15 +1,9 @@
 #include "tunnelmate/frame.h"
 
-#define FRAME_STATE_HDR 0
-#define FRAME_STATE_PAY 1
-
 struct tm_frame_reader {
-    int state;
-    uint8_t hdr[TM_FRAME_HDR_LEN];
-    size_t hdr_fill;
-    uint8_t *pay;
-    size_t pay_fill;
-    uint32_t pay_len;
+    uint8_t *buf;
+    size_t len;
+    size_t cap;
 };
 
 tm_frame_reader *tm_frame_reader_new(void) {
@@ -18,77 +12,55 @@ tm_frame_reader *tm_frame_reader_new(void) {
 
 void tm_frame_reader_free(tm_frame_reader *r) {
     if (!r) return;
-    free(r->pay);
+    free(r->buf);
     free(r);
 }
 
 size_t tm_frame_reader_buffered(const tm_frame_reader *r) {
-    if (r->state == FRAME_STATE_HDR) return r->hdr_fill;
-    return TM_FRAME_HDR_LEN + r->pay_fill;
+    return r ? r->len : 0;
 }
 
 uint8_t *tm_frame_reader_drain(tm_frame_reader *r, size_t *out_len) {
     size_t n = tm_frame_reader_buffered(r);
     if (n == 0) { *out_len = 0; return NULL; }
     uint8_t *buf = tm_xmalloc(n);
-    size_t off = 0;
-    if (r->hdr_fill) { memcpy(buf + off, r->hdr, r->hdr_fill); off += r->hdr_fill; }
-    if (r->state == FRAME_STATE_PAY && r->pay_fill) {
-        memcpy(buf + off, r->pay, r->pay_fill);
-        off += r->pay_fill;
-    }
-    free(r->pay);
-    r->pay = NULL;
-    r->state = FRAME_STATE_HDR;
-    r->hdr_fill = 0;
-    r->pay_fill = 0;
-    r->pay_len = 0;
-    *out_len = off;
+    memcpy(buf, r->buf, n);
+    r->len = 0;
+    *out_len = n;
     return buf;
 }
 
 tm_frame *tm_frame_reader_feed(tm_frame_reader *r, const uint8_t *data,
                                size_t len, bool *errored) {
     *errored = false;
-    size_t i = 0;
-    while (i < len) {
-        if (r->state == FRAME_STATE_HDR) {
-            size_t want = TM_FRAME_HDR_LEN - r->hdr_fill;
-            size_t take = len - i < want ? len - i : want;
-            memcpy(r->hdr + r->hdr_fill, data + i, take);
-            r->hdr_fill += take;
-            i += take;
-            if (r->hdr_fill < TM_FRAME_HDR_LEN) return NULL;
-            if (r->hdr[0] != TM_PROTO_VERSION) { *errored = true; return NULL; }
-            r->pay_len = rd_u32(r->hdr + 2);
-            if (r->pay_len > TM_MAX_FRAME_PAYLOAD) { *errored = true; return NULL; }
-            r->state = FRAME_STATE_PAY;
-            if (r->pay_len == 0) {
-                tm_frame *f = tm_frame_make(r->hdr[1], rd_u32(r->hdr + 6), NULL, 0);
-                r->state = FRAME_STATE_HDR;
-                r->hdr_fill = 0;
-                return f;
-            }
-            r->pay = tm_xmalloc(r->pay_len);
-            r->pay_fill = 0;
+    if (len) {
+        if (!data || len > SIZE_MAX - r->len ||
+            r->len + len > (size_t)TM_MAX_FRAME_PAYLOAD + TM_FRAME_HDR_LEN) {
+            *errored = true;
+            return NULL;
         }
-        if (r->state == FRAME_STATE_PAY) {
-            size_t want = r->pay_len - r->pay_fill;
-            size_t take = len - i < want ? len - i : want;
-            memcpy(r->pay + r->pay_fill, data + i, take);
-            r->pay_fill += take;
-            i += take;
-            if (r->pay_fill == r->pay_len) {
-                tm_frame *f = tm_frame_make(r->hdr[1], rd_u32(r->hdr + 6),
-                                            r->pay, r->pay_len);
-                r->pay = NULL;
-                r->state = FRAME_STATE_HDR;
-                r->hdr_fill = 0;
-                return f;
-            }
+        if (r->len + len > r->cap) {
+            size_t ncap = r->cap ? r->cap : 1024;
+            while (ncap < r->len + len) ncap *= 2;
+            r->buf = tm_xrealloc(r->buf, ncap);
+            r->cap = ncap;
         }
+        memcpy(r->buf + r->len, data, len);
+        r->len += len;
     }
-    return NULL;
+    if (r->len < TM_FRAME_HDR_LEN) return NULL;
+    if (r->buf[0] != TM_PROTO_VERSION) { *errored = true; return NULL; }
+    uint32_t pay_len = rd_u32(r->buf + 2);
+    if (pay_len > TM_MAX_FRAME_PAYLOAD) { *errored = true; return NULL; }
+    size_t frame_len = TM_FRAME_HDR_LEN + (size_t)pay_len;
+    if (r->len < frame_len) return NULL;
+
+    tm_frame *f = tm_frame_make(r->buf[1], rd_u32(r->buf + 6),
+                                r->buf + TM_FRAME_HDR_LEN, pay_len);
+    size_t remain = r->len - frame_len;
+    if (remain) memmove(r->buf, r->buf + frame_len, remain);
+    r->len = remain;
+    return f;
 }
 
 void tm_frame_free(tm_frame *f) {

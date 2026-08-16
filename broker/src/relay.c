@@ -25,10 +25,16 @@ static void stream_unlink(tm_stream *st) {
     st->tun->b->stream_count--;
 }
 
+static void stream_timer_closed(uv_handle_t *h) {
+    free(h->data);
+}
+
 /* fully close both legs and free */
 void tm_stream_close(tm_broker *b, tm_stream *st) {
     if (st->closing) return;
     st->closing = true;
+    uint64_t accepted_a = tm_io_write_total(st->io_a);
+    uint64_t accepted_b = tm_io_write_total(st->io_b);
     uv_timer_stop(&st->bind_timer);
     if (st->io_a) { tm_io_close(st->io_a); st->io_a = NULL; }
     if (st->io_b) { tm_io_close(st->io_b); st->io_b = NULL; }
@@ -36,18 +42,21 @@ void tm_stream_close(tm_broker *b, tm_stream *st) {
         uv_close(st->sock_a, tm_broker_tls_free_handle_cb);
     if (st->sock_b && !uv_is_closing(st->sock_b))
         uv_close(st->sock_b, tm_broker_tls_free_handle_cb);
-    if (!uv_is_closing((uv_handle_t *)&st->bind_timer))
-        uv_close((uv_handle_t *)&st->bind_timer, NULL);
     stream_unlink(st);
     b->stream_errors++;
     tm_log_debug(b->log, "stream_closed",
-                 "sid=%u up=%llu down=%llu a_eof=%d b_eof=%d",
+                 NULL, NULL,
+                 "sid=%u up=%llu down=%llu accepted_a=%llu accepted_b=%llu a_eof=%d b_eof=%d",
                  st->id, (unsigned long long)st->up_bytes,
-                 (unsigned long long)st->down_bytes, st->a_eof, st->b_eof);
+                 (unsigned long long)st->down_bytes,
+                 (unsigned long long)accepted_a, (unsigned long long)accepted_b,
+                 st->a_eof, st->b_eof);
     free(st->preq);
     free(st->pend_a);
     free(st->pend_b);
-    free(st);
+    st->bind_timer.data = st;
+    if (!uv_is_closing((uv_handle_t *)&st->bind_timer))
+        uv_close((uv_handle_t *)&st->bind_timer, stream_timer_closed);
 }
 
 /* close only once both sides have EOF'd AND every queued byte has been
@@ -74,9 +83,8 @@ static void relay_a_read(tm_io *io, const uint8_t *data, size_t len, void *arg) 
     if (!st->io_b) {
         /* closed-tunnel stream: agent leg not bound yet. Queue the bytes;
            relay_start flushes them once the agent attaches. */
-        if (st->preq_len + len > TM_IO_HIGH_WATER) {
-            tm_io_pause_read(st->io_a);
-            st->a_paused = true;
+        if (st->preq_len + len > TM_IO_HIGH_WATER + 65536u) {
+            tm_stream_close(st->tun->b, st);
             return;
         }
         if (st->preq_len + len > st->preq_cap) {
@@ -87,12 +95,14 @@ static void relay_a_read(tm_io *io, const uint8_t *data, size_t len, void *arg) 
         }
         memcpy(st->preq + st->preq_len, data, len);
         st->preq_len += len;
+        if (st->preq_len >= TM_IO_HIGH_WATER) {
+            tm_io_pause_read(st->io_a);
+            st->a_paused = true;
+        }
         return;
     }
-    fprintf(stderr, "DBG a_read +%zu up=%llu\n", len, (unsigned long long)st->up_bytes);
     int r = tm_io_write(st->io_b, data, len);
     if (r == TM_ERR_BUSY) {
-        fprintf(stderr, "DBG a_read BUSY pend_b=%zu\n", st->pend_b_len);
         if (st->pend_b_len + len > st->pend_b_cap) {
             size_t ncap = st->pend_b_cap ? st->pend_b_cap * 2 : 16384;
             while (ncap < st->pend_b_len + len) ncap *= 2;
@@ -163,7 +173,6 @@ static void relay_a_low(tm_io *io, void *arg) {
     tm_stream *st = (tm_stream *)arg;
     (void)io;
     if (st->closing) return;
-    fprintf(stderr, "DBG a_low fired pend_a=%zu b_paused=%d\n", st->pend_a_len, st->b_paused);
     flush_pend(st->io_a, &st->pend_a, &st->pend_a_len, &st->pend_a_cap);
     if (st->pend_a_len) { stream_maybe_close(st); return; }
     if (st->b_eof && !st->b_fin) { st->b_fin = true; tm_io_shutdown_send(st->io_a); }
@@ -183,10 +192,8 @@ static void relay_b_read(tm_io *io, const uint8_t *data, size_t len, void *arg) 
     st->tun->tx_bytes += len;
     st->tun->b->tx_bytes_total += len;
     st->down_bytes += len;
-    fprintf(stderr, "DBG b_read +%zu down=%llu\n", len, (unsigned long long)st->down_bytes);
     int r = tm_io_write(st->io_a, data, len);
     if (r == TM_ERR_BUSY) {
-        fprintf(stderr, "DBG b_read BUSY pend_a=%zu\n", st->pend_a_len);
         if (st->pend_a_len + len > st->pend_a_cap) {
             size_t ncap = st->pend_a_cap ? st->pend_a_cap * 2 : 16384;
             while (ncap < st->pend_a_len + len) ncap *= 2;
@@ -204,8 +211,10 @@ static void relay_b_read(tm_io *io, const uint8_t *data, size_t len, void *arg) 
 
 static void relay_b_eof(tm_io *io, void *arg) {
     tm_stream *st = (tm_stream *)arg;
-    (void)io;
     if (st->closing) return;
+    tm_log_debug(st->tun->b->log, "relay_b_eof", "stream_id", NULL,
+                 "%u accepted=%llu pending=%zu", st->id,
+                 (unsigned long long)tm_io_write_total(io), st->pend_b_len);
     st->b_eof = true;
     if (!st->io_a) { stream_maybe_close(st); return; }
     flush_pend(st->io_a, &st->pend_a, &st->pend_a_len, &st->pend_a_cap);
@@ -217,9 +226,10 @@ static void relay_b_eof(tm_io *io, void *arg) {
 
 static void relay_b_error(tm_io *io, int err, void *arg) {
     tm_stream *st = (tm_stream *)arg;
-    (void)io;
-    (void)err;
     if (st->closing) return;
+    tm_log_warn(st->tun->b->log, "relay_b_error", "stream_id", NULL,
+                "%u err=%d accepted=%llu pending=%zu", st->id, err,
+                (unsigned long long)tm_io_write_total(io), st->pend_b_len);
     /* the agent leg is dead: close it now, keep relaying what the
        consumer leg still has queued, then close once it drains */
     if (st->io_b) { tm_io_close(st->io_b); st->io_b = NULL; }
@@ -237,7 +247,6 @@ static void relay_b_low(tm_io *io, void *arg) {
     tm_stream *st = (tm_stream *)arg;
     (void)io;
     if (st->closing) return;
-    fprintf(stderr, "DBG b_low fired pend_b=%zu a_paused=%d\n", st->pend_b_len, st->a_paused);
     flush_pend(st->io_b, &st->pend_b, &st->pend_b_len, &st->pend_b_cap);
     if (st->pend_b_len) { stream_maybe_close(st); return; }
     if (st->a_eof && !st->a_fin) { st->a_fin = true; tm_io_shutdown_send(st->io_b); }
@@ -290,15 +299,22 @@ void tm_stream_relay_start(tm_broker *b, tm_stream *st) {
     }
     if (st->io_b) tm_io_start(st->io_b);
     if (st->preq_len) {
-        uint8_t *p = st->preq;
-        size_t n = st->preq_len;
+        /* Move the pre-bind queue into the normal bounded leg-B queue and
+           drain it in chunks. Passing it as one oversized write either drops
+           the chunk or resumes the public reader before the queue drains. */
+        st->pend_b = st->preq;
+        st->pend_b_len = st->preq_len;
+        st->pend_b_cap = st->preq_cap;
         st->preq = NULL;
         st->preq_len = 0;
         st->preq_cap = 0;
-        relay_a_read(st->io_a, p, n, st);
-        free(p);
+        flush_pend(st->io_b, &st->pend_b, &st->pend_b_len,
+                   &st->pend_b_cap);
     }
-    if (st->a_paused) {
+    if (st->pend_b_len) {
+        tm_io_pause_read(st->io_a);
+        st->a_paused = true;
+    } else if (st->a_paused) {
         st->a_paused = false;
         tm_io_resume_read(st->io_a);
     }

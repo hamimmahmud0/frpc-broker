@@ -1,0 +1,2798 @@
+
+---
+events:
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineSystem.cmake:12 (find_program)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_UNAME"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "uname"
+    candidate_directories:
+      - "/home/hamim-mahmud/.local/bin/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/"
+      - "/home/hamim-mahmud/.opencode/bin/"
+      - "/home/hamim-mahmud/.miniconda3/bin/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/"
+      - "/home/hamim-mahmud/.cargo/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/usr/bin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/"
+    searched_directories:
+      - "/home/hamim-mahmud/.local/bin/uname"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/uname"
+      - "/home/hamim-mahmud/.opencode/bin/uname"
+      - "/home/hamim-mahmud/.miniconda3/bin/uname"
+      - "/home/hamim-mahmud/.miniconda3/condabin/uname"
+      - "/home/hamim-mahmud/.cargo/bin/uname"
+      - "/usr/local/sbin/uname"
+      - "/usr/local/bin/uname"
+      - "/usr/sbin/uname"
+    found: "/usr/bin/uname"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineSystem.cmake:218 (message)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      The system is: Linux - 7.0.0-29-generic - x86_64
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeUnixFindMake.cmake:5 (find_program)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_MAKE_PROGRAM"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "gmake"
+      - "make"
+      - "smake"
+    candidate_directories:
+      - "/home/hamim-mahmud/.local/bin/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/"
+      - "/home/hamim-mahmud/.opencode/bin/"
+      - "/home/hamim-mahmud/.miniconda3/bin/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/"
+      - "/home/hamim-mahmud/.cargo/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/usr/bin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/"
+    searched_directories:
+      - "/home/hamim-mahmud/.local/bin/gmake"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/gmake"
+      - "/home/hamim-mahmud/.opencode/bin/gmake"
+      - "/home/hamim-mahmud/.miniconda3/bin/gmake"
+      - "/home/hamim-mahmud/.miniconda3/condabin/gmake"
+      - "/home/hamim-mahmud/.cargo/bin/gmake"
+      - "/usr/local/sbin/gmake"
+      - "/usr/local/bin/gmake"
+      - "/usr/sbin/gmake"
+    found: "/usr/bin/gmake"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCompiler.cmake:73 (find_program)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCCompiler.cmake:64 (_cmake_find_compiler)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_C_COMPILER"
+    description: "C compiler"
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "cc"
+      - "gcc"
+      - "cl"
+      - "bcc"
+      - "xlc"
+      - "icx"
+      - "clang"
+    candidate_directories:
+      - "/home/hamim-mahmud/.local/bin/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/"
+      - "/home/hamim-mahmud/.opencode/bin/"
+      - "/home/hamim-mahmud/.miniconda3/bin/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/"
+      - "/home/hamim-mahmud/.cargo/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/usr/bin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/"
+    searched_directories:
+      - "/home/hamim-mahmud/.local/bin/cc"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/cc"
+      - "/home/hamim-mahmud/.opencode/bin/cc"
+      - "/home/hamim-mahmud/.miniconda3/bin/cc"
+      - "/home/hamim-mahmud/.miniconda3/condabin/cc"
+      - "/home/hamim-mahmud/.cargo/bin/cc"
+      - "/usr/local/sbin/cc"
+      - "/usr/local/bin/cc"
+      - "/usr/sbin/cc"
+    found: "/usr/bin/cc"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCompilerId.cmake:501 (find_file)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCompilerId.cmake:538 (CMAKE_DETERMINE_COMPILER_ID_WRITE)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCompilerId.cmake:8 (CMAKE_DETERMINE_COMPILER_ID_BUILD)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCCompiler.cmake:122 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "file"
+    variable: "src_in"
+    description: "Path to a file."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "CMakeCCompilerId.c.in"
+    candidate_directories:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/"
+    found: "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeCCompilerId.c.in"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCCompiler.cmake:122 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
+      Compiler: /usr/bin/cc 
+      Build flags: 
+      Id flags:  
+      
+      The output was:
+      0
+      
+      
+      Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "a.out"
+      
+      The C compiler identification is GNU, found in:
+        /home/hamim-mahmud/Workspace/frpc-broker/build-sanitize/CMakeFiles/4.4.2/CompilerIdC/a.out
+      
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_AR"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "ar"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/hamim-mahmud/.local/bin/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/"
+      - "/home/hamim-mahmud/.opencode/bin/"
+      - "/home/hamim-mahmud/.miniconda3/bin/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/"
+      - "/home/hamim-mahmud/.cargo/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/"
+    found: "/usr/bin/ar"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_RANLIB"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "ranlib"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/hamim-mahmud/.local/bin/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/"
+      - "/home/hamim-mahmud/.opencode/bin/"
+      - "/home/hamim-mahmud/.miniconda3/bin/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/"
+      - "/home/hamim-mahmud/.cargo/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/"
+    found: "/usr/bin/ranlib"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_STRIP"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "strip"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/hamim-mahmud/.local/bin/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/"
+      - "/home/hamim-mahmud/.opencode/bin/"
+      - "/home/hamim-mahmud/.miniconda3/bin/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/"
+      - "/home/hamim-mahmud/.cargo/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/"
+    found: "/usr/bin/strip"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_LINKER"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "ld"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/hamim-mahmud/.local/bin/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/"
+      - "/home/hamim-mahmud/.opencode/bin/"
+      - "/home/hamim-mahmud/.miniconda3/bin/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/"
+      - "/home/hamim-mahmud/.cargo/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/"
+    found: "/usr/bin/ld"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_NM"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "nm"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/hamim-mahmud/.local/bin/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/"
+      - "/home/hamim-mahmud/.opencode/bin/"
+      - "/home/hamim-mahmud/.miniconda3/bin/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/"
+      - "/home/hamim-mahmud/.cargo/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/"
+    found: "/usr/bin/nm"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_OBJDUMP"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "objdump"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/hamim-mahmud/.local/bin/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/"
+      - "/home/hamim-mahmud/.opencode/bin/"
+      - "/home/hamim-mahmud/.miniconda3/bin/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/"
+      - "/home/hamim-mahmud/.cargo/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/"
+    found: "/usr/bin/objdump"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_OBJCOPY"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "objcopy"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/hamim-mahmud/.local/bin/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/"
+      - "/home/hamim-mahmud/.opencode/bin/"
+      - "/home/hamim-mahmud/.miniconda3/bin/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/"
+      - "/home/hamim-mahmud/.cargo/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/"
+    found: "/usr/bin/objcopy"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_READELF"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "readelf"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/hamim-mahmud/.local/bin/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/"
+      - "/home/hamim-mahmud/.opencode/bin/"
+      - "/home/hamim-mahmud/.miniconda3/bin/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/"
+      - "/home/hamim-mahmud/.cargo/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/"
+    found: "/usr/bin/readelf"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_DLLTOOL"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "dlltool"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/hamim-mahmud/.local/bin/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/"
+      - "/home/hamim-mahmud/.opencode/bin/"
+      - "/home/hamim-mahmud/.miniconda3/bin/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/"
+      - "/home/hamim-mahmud/.cargo/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/"
+    searched_directories:
+      - "/usr/bin/dlltool"
+      - "/home/hamim-mahmud/.local/bin/dlltool"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/dlltool"
+      - "/home/hamim-mahmud/.opencode/bin/dlltool"
+      - "/home/hamim-mahmud/.miniconda3/bin/dlltool"
+      - "/home/hamim-mahmud/.miniconda3/condabin/dlltool"
+      - "/home/hamim-mahmud/.cargo/bin/dlltool"
+      - "/usr/local/sbin/dlltool"
+      - "/usr/local/bin/dlltool"
+      - "/usr/sbin/dlltool"
+      - "/sbin/dlltool"
+      - "/bin/dlltool"
+      - "/usr/games/dlltool"
+      - "/usr/local/games/dlltool"
+      - "/snap/bin/dlltool"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/dlltool"
+    found: false
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_ADDR2LINE"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "addr2line"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/hamim-mahmud/.local/bin/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/"
+      - "/home/hamim-mahmud/.opencode/bin/"
+      - "/home/hamim-mahmud/.miniconda3/bin/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/"
+      - "/home/hamim-mahmud/.cargo/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/"
+    found: "/usr/bin/addr2line"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeFindBinUtils.cmake:247 (find_program)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCCompiler.cmake:200 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_TAPI"
+    description: "Path to a program."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "tapi"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/hamim-mahmud/.local/bin/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/"
+      - "/home/hamim-mahmud/.opencode/bin/"
+      - "/home/hamim-mahmud/.miniconda3/bin/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/"
+      - "/home/hamim-mahmud/.cargo/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/"
+    searched_directories:
+      - "/usr/bin/tapi"
+      - "/home/hamim-mahmud/.local/bin/tapi"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/tapi"
+      - "/home/hamim-mahmud/.opencode/bin/tapi"
+      - "/home/hamim-mahmud/.miniconda3/bin/tapi"
+      - "/home/hamim-mahmud/.miniconda3/condabin/tapi"
+      - "/home/hamim-mahmud/.cargo/bin/tapi"
+      - "/usr/local/sbin/tapi"
+      - "/usr/local/bin/tapi"
+      - "/usr/sbin/tapi"
+      - "/sbin/tapi"
+      - "/bin/tapi"
+      - "/usr/games/tapi"
+      - "/usr/local/games/tapi"
+      - "/snap/bin/tapi"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/tapi"
+    found: false
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/Compiler/GNU-FindBinUtils.cmake:18 (find_program)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCCompiler.cmake:201 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_C_COMPILER_AR"
+    description: "A wrapper around 'ar' adding the appropriate '--plugin' option for the GCC compiler"
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "gcc-ar-15.2"
+      - "gcc-ar-15"
+      - "gcc-ar15"
+      - "gcc-ar"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/hamim-mahmud/.local/bin/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/"
+      - "/home/hamim-mahmud/.opencode/bin/"
+      - "/home/hamim-mahmud/.miniconda3/bin/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/"
+      - "/home/hamim-mahmud/.cargo/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/"
+    searched_directories:
+      - "/usr/bin/gcc-ar-15.2"
+      - "/home/hamim-mahmud/.local/bin/gcc-ar-15.2"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/gcc-ar-15.2"
+      - "/home/hamim-mahmud/.opencode/bin/gcc-ar-15.2"
+      - "/home/hamim-mahmud/.miniconda3/bin/gcc-ar-15.2"
+      - "/home/hamim-mahmud/.miniconda3/condabin/gcc-ar-15.2"
+      - "/home/hamim-mahmud/.cargo/bin/gcc-ar-15.2"
+      - "/usr/local/sbin/gcc-ar-15.2"
+      - "/usr/local/bin/gcc-ar-15.2"
+      - "/usr/sbin/gcc-ar-15.2"
+      - "/sbin/gcc-ar-15.2"
+      - "/bin/gcc-ar-15.2"
+      - "/usr/games/gcc-ar-15.2"
+      - "/usr/local/games/gcc-ar-15.2"
+      - "/snap/bin/gcc-ar-15.2"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/gcc-ar-15.2"
+    found: "/usr/bin/gcc-ar-15"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/Compiler/GNU-FindBinUtils.cmake:30 (find_program)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCCompiler.cmake:201 (include)"
+      - "CMakeLists.txt:2 (project)"
+    mode: "program"
+    variable: "CMAKE_C_COMPILER_RANLIB"
+    description: "A wrapper around 'ranlib' adding the appropriate '--plugin' option for the GCC compiler"
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: false
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: false
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "gcc-ranlib-15.2"
+      - "gcc-ranlib-15"
+      - "gcc-ranlib15"
+      - "gcc-ranlib"
+    candidate_directories:
+      - "/usr/bin/"
+      - "/home/hamim-mahmud/.local/bin/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/"
+      - "/home/hamim-mahmud/.opencode/bin/"
+      - "/home/hamim-mahmud/.miniconda3/bin/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/"
+      - "/home/hamim-mahmud/.cargo/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/"
+    searched_directories:
+      - "/usr/bin/gcc-ranlib-15.2"
+      - "/home/hamim-mahmud/.local/bin/gcc-ranlib-15.2"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/gcc-ranlib-15.2"
+      - "/home/hamim-mahmud/.opencode/bin/gcc-ranlib-15.2"
+      - "/home/hamim-mahmud/.miniconda3/bin/gcc-ranlib-15.2"
+      - "/home/hamim-mahmud/.miniconda3/condabin/gcc-ranlib-15.2"
+      - "/home/hamim-mahmud/.cargo/bin/gcc-ranlib-15.2"
+      - "/usr/local/sbin/gcc-ranlib-15.2"
+      - "/usr/local/bin/gcc-ranlib-15.2"
+      - "/usr/sbin/gcc-ranlib-15.2"
+      - "/sbin/gcc-ranlib-15.2"
+      - "/bin/gcc-ranlib-15.2"
+      - "/usr/games/gcc-ranlib-15.2"
+      - "/usr/local/games/gcc-ranlib-15.2"
+      - "/snap/bin/gcc-ranlib-15.2"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/gcc-ranlib-15.2"
+    found: "/usr/bin/gcc-ranlib-15"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCompilerABI.cmake:123 (try_compile)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:2 (project)"
+    checks:
+      - "Detecting C compiler ABI info"
+    directories:
+      source: "/home/hamim-mahmud/Workspace/frpc-broker/build-sanitize/CMakeFiles/CMakeScratch/TryCompile-tOmrVZ"
+      binary: "/home/hamim-mahmud/Workspace/frpc-broker/build-sanitize/CMakeFiles/CMakeScratch/TryCompile-tOmrVZ"
+    cmakeVariables:
+      CMAKE_C_FLAGS: ""
+      CMAKE_C_FLAGS_DEBUG: "-g"
+      CMAKE_EXE_LINKER_FLAGS: ""
+    buildResult:
+      variable: "CMAKE_C_ABI_COMPILED"
+      cached: false
+      stdout: |
+        Change Dir: '/home/hamim-mahmud/Workspace/frpc-broker/build-sanitize/CMakeFiles/CMakeScratch/TryCompile-tOmrVZ'
+        
+        Run Build Command(s): /home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_8973d/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_8973d.dir/build.make CMakeFiles/cmTC_8973d.dir/build
+        gmake[1]: Entering directory '/home/hamim-mahmud/Workspace/frpc-broker/build-sanitize/CMakeFiles/CMakeScratch/TryCompile-tOmrVZ'
+        Building C object CMakeFiles/cmTC_8973d.dir/CMakeCCompilerABI.c.o
+        /usr/bin/cc   -v -o CMakeFiles/cmTC_8973d.dir/CMakeCCompilerABI.c.o -c /home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeCCompilerABI.c
+        Using built-in specs.
+        COLLECT_GCC=/usr/bin/cc
+        OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa
+        OFFLOAD_TARGET_DEFAULT=1
+        Target: x86_64-linux-gnu
+        Configured with: ../src/configure -v --with-pkgversion='Ubuntu 15.2.0-16ubuntu1' --with-bugurl=file:///usr/share/doc/gcc-15/README.Bugs --enable-languages=c,ada,c++,go,d,fortran,objc,obj-c++,m2,rust,cobol,algol68 --prefix=/usr --with-gcc-major-version-only --program-suffix=-15 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/libexec --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-bootstrap --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-libstdcxx-backtrace --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --enable-libphobos-checking=release --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --enable-cet --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-15-j35TAX/gcc-15-15.2.0/debian/tmp-nvptx/usr,amdgcn-amdhsa=/build/gcc-15-j35TAX/gcc-15-15.2.0/debian/tmp-gcn/usr --enable-offload-defaulted --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --with-build-config=bootstrap-lto-lean --enable-link-serialization=2
+        Thread model: posix
+        Supported LTO compression algorithms: zlib zstd
+        gcc version 15.2.0 (Ubuntu 15.2.0-16ubuntu1) 
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_8973d.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_8973d.dir/'
+         /usr/libexec/gcc/x86_64-linux-gnu/15/cc1 -quiet -v -imultiarch x86_64-linux-gnu /home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeCCompilerABI.c -quiet -dumpdir CMakeFiles/cmTC_8973d.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mtune=generic -march=x86-64 -version -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -fzero-init-padding-bits=all -Wbidi-chars=any -o /tmp/ccdSk2Au.s
+        GNU C23 (Ubuntu 15.2.0-16ubuntu1) version 15.2.0 (x86_64-linux-gnu)
+        	compiled by GNU C version 15.2.0, GMP version 6.3.0, MPFR version 4.2.2, MPC version 1.3.1, isl version isl-0.27-GMP
+        
+        GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
+        ignoring nonexistent directory "/usr/local/include/x86_64-linux-gnu"
+        ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/15/include-fixed/x86_64-linux-gnu"
+        ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/15/include-fixed"
+        ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/15/../../../../x86_64-linux-gnu/include"
+        #include "..." search starts here:
+        #include <...> search starts here:
+         /usr/lib/gcc/x86_64-linux-gnu/15/include
+         /usr/local/include
+         /usr/include/x86_64-linux-gnu
+         /usr/include
+        End of search list.
+        Compiler executable checksum: edd70396dcc669433a92073f97309866
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_8973d.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_8973d.dir/'
+         /usr/bin/x86_64-linux-gnu-as -v --64 -o CMakeFiles/cmTC_8973d.dir/CMakeCCompilerABI.c.o /tmp/ccdSk2Au.s
+        GNU assembler version 2.46 (x86_64-linux-gnu) using BFD version (GNU Binutils for Ubuntu) 2.46
+        COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/
+        LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../:/lib/:/usr/lib/
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_8973d.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_8973d.dir/CMakeCCompilerABI.c.'
+        Linking C executable cmTC_8973d
+        /home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/bin/cmake -E cmake_link_script CMakeFiles/cmTC_8973d.dir/link.txt --verbose=1
+        Using built-in specs.
+        COLLECT_GCC=/usr/bin/cc
+        COLLECT_LTO_WRAPPER=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper
+        OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa
+        OFFLOAD_TARGET_DEFAULT=1
+        Target: x86_64-linux-gnu
+        Configured with: ../src/configure -v --with-pkgversion='Ubuntu 15.2.0-16ubuntu1' --with-bugurl=file:///usr/share/doc/gcc-15/README.Bugs --enable-languages=c,ada,c++,go,d,fortran,objc,obj-c++,m2,rust,cobol,algol68 --prefix=/usr --with-gcc-major-version-only --program-suffix=-15 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/libexec --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-bootstrap --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-libstdcxx-backtrace --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --enable-libphobos-checking=release --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --enable-cet --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32,m64,mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-15-j35TAX/gcc-15-15.2.0/debian/tmp-nvptx/usr,amdgcn-amdhsa=/build/gcc-15-j35TAX/gcc-15-15.2.0/debian/tmp-gcn/usr --enable-offload-defaulted --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --with-build-config=bootstrap-lto-lean --enable-link-serialization=2
+        Thread model: posix
+        Supported LTO compression algorithms: zlib zstd
+        gcc version 15.2.0 (Ubuntu 15.2.0-16ubuntu1) 
+        COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/
+        LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../:/lib/:/usr/lib/
+        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_8973d' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_8973d.'
+         /usr/libexec/gcc/x86_64-linux-gnu/15/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper -plugin-opt=-fresolution=/tmp/ccBmSKoG.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_8973d /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/15 -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/15/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_8973d.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o
+        collect2 version 15.2.0
+        /usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper -plugin-opt=-fresolution=/tmp/ccBmSKoG.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_8973d /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/15 -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/15/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_8973d.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o
+        GNU ld (GNU Binutils for Ubuntu) 2.46
+        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_8973d' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_8973d.'
+        /usr/bin/cc  -v -Wl,-v CMakeFiles/cmTC_8973d.dir/CMakeCCompilerABI.c.o -o cmTC_8973d
+        gmake[1]: Leaving directory '/home/hamim-mahmud/Workspace/frpc-broker/build-sanitize/CMakeFiles/CMakeScratch/TryCompile-tOmrVZ'
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCompilerABI.cmake:255 (message)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Parsed C implicit include dir info: rv=done
+        found start of include info
+        found start of implicit include info
+          add: [/usr/lib/gcc/x86_64-linux-gnu/15/include]
+          add: [/usr/local/include]
+          add: [/usr/include/x86_64-linux-gnu]
+          add: [/usr/include]
+        end of search list found
+        collapse include dir [/usr/lib/gcc/x86_64-linux-gnu/15/include] ==> [/usr/lib/gcc/x86_64-linux-gnu/15/include]
+        collapse include dir [/usr/local/include] ==> [/usr/local/include]
+        collapse include dir [/usr/include/x86_64-linux-gnu] ==> [/usr/include/x86_64-linux-gnu]
+        collapse include dir [/usr/include] ==> [/usr/include]
+        implicit include dirs: [/usr/lib/gcc/x86_64-linux-gnu/15/include;/usr/local/include;/usr/include/x86_64-linux-gnu;/usr/include]
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCompilerABI.cmake:291 (message)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Parsed C implicit link information:
+        link line regex: [^( *|.*[/\\])(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|wild|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        linker tool regex: [^[ 	]*(->|"|[0-9]+>[ 	-]*Build:[ 	0-9]+ ms[ 	]*)?[ 	]*(([^"]*[/\\])?(ld[0-9]*(|\\.[a-rt-z][a-z]*|\\.s[a-np-z][a-z]*|\\.so[a-z]+)|wild))("|,| |$)]
+        ignore line: [Change Dir: '/home/hamim-mahmud/Workspace/frpc-broker/build-sanitize/CMakeFiles/CMakeScratch/TryCompile-tOmrVZ']
+        ignore line: []
+        ignore line: [Run Build Command(s): /home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_8973d/fast]
+        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_8973d.dir/build.make CMakeFiles/cmTC_8973d.dir/build]
+        ignore line: [gmake[1]: Entering directory '/home/hamim-mahmud/Workspace/frpc-broker/build-sanitize/CMakeFiles/CMakeScratch/TryCompile-tOmrVZ']
+        ignore line: [Building C object CMakeFiles/cmTC_8973d.dir/CMakeCCompilerABI.c.o]
+        ignore line: [/usr/bin/cc   -v -o CMakeFiles/cmTC_8973d.dir/CMakeCCompilerABI.c.o -c /home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeCCompilerABI.c]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=/usr/bin/cc]
+        ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa]
+        ignore line: [OFFLOAD_TARGET_DEFAULT=1]
+        ignore line: [Target: x86_64-linux-gnu]
+        ignore line: [Configured with: ../src/configure -v --with-pkgversion='Ubuntu 15.2.0-16ubuntu1' --with-bugurl=file:///usr/share/doc/gcc-15/README.Bugs --enable-languages=c ada c++ go d fortran objc obj-c++ m2 rust cobol algol68 --prefix=/usr --with-gcc-major-version-only --program-suffix=-15 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/libexec --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-bootstrap --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-libstdcxx-backtrace --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --enable-libphobos-checking=release --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --enable-cet --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32 m64 mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-15-j35TAX/gcc-15-15.2.0/debian/tmp-nvptx/usr amdgcn-amdhsa=/build/gcc-15-j35TAX/gcc-15-15.2.0/debian/tmp-gcn/usr --enable-offload-defaulted --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --with-build-config=bootstrap-lto-lean --enable-link-serialization=2]
+        ignore line: [Thread model: posix]
+        ignore line: [Supported LTO compression algorithms: zlib zstd]
+        ignore line: [gcc version 15.2.0 (Ubuntu 15.2.0-16ubuntu1) ]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_8973d.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_8973d.dir/']
+        ignore line: [ /usr/libexec/gcc/x86_64-linux-gnu/15/cc1 -quiet -v -imultiarch x86_64-linux-gnu /home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeCCompilerABI.c -quiet -dumpdir CMakeFiles/cmTC_8973d.dir/ -dumpbase CMakeCCompilerABI.c.c -dumpbase-ext .c -mtune=generic -march=x86-64 -version -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -fzero-init-padding-bits=all -Wbidi-chars=any -o /tmp/ccdSk2Au.s]
+        ignore line: [GNU C23 (Ubuntu 15.2.0-16ubuntu1) version 15.2.0 (x86_64-linux-gnu)]
+        ignore line: [	compiled by GNU C version 15.2.0  GMP version 6.3.0  MPFR version 4.2.2  MPC version 1.3.1  isl version isl-0.27-GMP]
+        ignore line: []
+        ignore line: [GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072]
+        ignore line: [ignoring nonexistent directory "/usr/local/include/x86_64-linux-gnu"]
+        ignore line: [ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/15/include-fixed/x86_64-linux-gnu"]
+        ignore line: [ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/15/include-fixed"]
+        ignore line: [ignoring nonexistent directory "/usr/lib/gcc/x86_64-linux-gnu/15/../../../../x86_64-linux-gnu/include"]
+        ignore line: [#include "..." search starts here:]
+        ignore line: [#include <...> search starts here:]
+        ignore line: [ /usr/lib/gcc/x86_64-linux-gnu/15/include]
+        ignore line: [ /usr/local/include]
+        ignore line: [ /usr/include/x86_64-linux-gnu]
+        ignore line: [ /usr/include]
+        ignore line: [End of search list.]
+        ignore line: [Compiler executable checksum: edd70396dcc669433a92073f97309866]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_8973d.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_8973d.dir/']
+        ignore line: [ /usr/bin/x86_64-linux-gnu-as -v --64 -o CMakeFiles/cmTC_8973d.dir/CMakeCCompilerABI.c.o /tmp/ccdSk2Au.s]
+        ignore line: [GNU assembler version 2.46 (x86_64-linux-gnu) using BFD version (GNU Binutils for Ubuntu) 2.46]
+        ignore line: [COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/]
+        ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../:/lib/:/usr/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_8973d.dir/CMakeCCompilerABI.c.o' '-c' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_8973d.dir/CMakeCCompilerABI.c.']
+        ignore line: [Linking C executable cmTC_8973d]
+        ignore line: [/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/bin/cmake -E cmake_link_script CMakeFiles/cmTC_8973d.dir/link.txt --verbose=1]
+        ignore line: [Using built-in specs.]
+        ignore line: [COLLECT_GCC=/usr/bin/cc]
+        ignore line: [COLLECT_LTO_WRAPPER=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper]
+        ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa]
+        ignore line: [OFFLOAD_TARGET_DEFAULT=1]
+        ignore line: [Target: x86_64-linux-gnu]
+        ignore line: [Configured with: ../src/configure -v --with-pkgversion='Ubuntu 15.2.0-16ubuntu1' --with-bugurl=file:///usr/share/doc/gcc-15/README.Bugs --enable-languages=c ada c++ go d fortran objc obj-c++ m2 rust cobol algol68 --prefix=/usr --with-gcc-major-version-only --program-suffix=-15 --program-prefix=x86_64-linux-gnu- --enable-shared --enable-linker-build-id --libexecdir=/usr/libexec --without-included-gettext --enable-threads=posix --libdir=/usr/lib --enable-nls --enable-bootstrap --enable-clocale=gnu --enable-libstdcxx-debug --enable-libstdcxx-time=yes --with-default-libstdcxx-abi=new --enable-libstdcxx-backtrace --enable-gnu-unique-object --disable-vtable-verify --enable-plugin --enable-default-pie --with-system-zlib --enable-libphobos-checking=release --with-target-system-zlib=auto --enable-objc-gc=auto --enable-multiarch --disable-werror --enable-cet --with-arch-32=i686 --with-abi=m64 --with-multilib-list=m32 m64 mx32 --enable-multilib --with-tune=generic --enable-offload-targets=nvptx-none=/build/gcc-15-j35TAX/gcc-15-15.2.0/debian/tmp-nvptx/usr amdgcn-amdhsa=/build/gcc-15-j35TAX/gcc-15-15.2.0/debian/tmp-gcn/usr --enable-offload-defaulted --without-cuda-driver --enable-checking=release --build=x86_64-linux-gnu --host=x86_64-linux-gnu --target=x86_64-linux-gnu --with-build-config=bootstrap-lto-lean --enable-link-serialization=2]
+        ignore line: [Thread model: posix]
+        ignore line: [Supported LTO compression algorithms: zlib zstd]
+        ignore line: [gcc version 15.2.0 (Ubuntu 15.2.0-16ubuntu1) ]
+        ignore line: [COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/15/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/]
+        ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/15/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/15/../../../:/lib/:/usr/lib/]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_8973d' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_8973d.']
+        link line: [ /usr/libexec/gcc/x86_64-linux-gnu/15/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper -plugin-opt=-fresolution=/tmp/ccBmSKoG.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_8973d /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/15 -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/15/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_8973d.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o]
+          arg [/usr/libexec/gcc/x86_64-linux-gnu/15/collect2] ==> ignore
+          arg [-plugin] ==> ignore
+          arg [/usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so] ==> ignore
+          arg [-plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper] ==> ignore
+          arg [-plugin-opt=-fresolution=/tmp/ccBmSKoG.res] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+          arg [-plugin-opt=-pass-through=-lc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
+          arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
+          arg [--build-id] ==> ignore
+          arg [--eh-frame-hdr] ==> ignore
+          arg [-m] ==> ignore
+          arg [elf_x86_64] ==> ignore
+          arg [--hash-style=gnu] ==> ignore
+          arg [--as-needed] ==> ignore
+          arg [-dynamic-linker] ==> ignore
+          arg [/lib64/ld-linux-x86-64.so.2] ==> ignore
+          arg [-pie] ==> ignore
+          arg [-znow] ==> ignore
+          arg [-zrelro] ==> ignore
+          arg [-o] ==> ignore
+          arg [cmTC_8973d] ==> ignore
+          arg [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/15] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/15]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib]
+          arg [-L/lib/x86_64-linux-gnu] ==> dir [/lib/x86_64-linux-gnu]
+          arg [-L/lib/../lib] ==> dir [/lib/../lib]
+          arg [-L/usr/lib/x86_64-linux-gnu] ==> dir [/usr/lib/x86_64-linux-gnu]
+          arg [-L/usr/lib/../lib] ==> dir [/usr/lib/../lib]
+          arg [-L/usr/lib/gcc/x86_64-linux-gnu/15/../../..] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/15/../../..]
+          arg [-L/lib] ==> dir [/lib]
+          arg [-L/usr/lib] ==> dir [/usr/lib]
+          arg [-v] ==> ignore
+          arg [CMakeFiles/cmTC_8973d.dir/CMakeCCompilerABI.c.o] ==> ignore
+          arg [-lgcc] ==> lib [gcc]
+          arg [--push-state] ==> ignore
+          arg [--as-needed] ==> ignore
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [--pop-state] ==> ignore
+          arg [-lc] ==> lib [c]
+          arg [-lgcc] ==> lib [gcc]
+          arg [--push-state] ==> ignore
+          arg [--as-needed] ==> ignore
+          arg [-lgcc_s] ==> lib [gcc_s]
+          arg [--pop-state] ==> ignore
+          arg [/usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o]
+          arg [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o]
+        ignore line: [collect2 version 15.2.0]
+        link line: [/usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper -plugin-opt=-fresolution=/tmp/ccBmSKoG.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_8973d /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/15 -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/15/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_8973d.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o] ==> linker [/usr/bin/ld]
+        link line: [/usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper -plugin-opt=-fresolution=/tmp/ccBmSKoG.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_8973d /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/15 -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/15/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_8973d.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o] ==> linker architecture flags [-m;elf]
+        ignore line: [/usr/bin/ld -plugin /usr/libexec/gcc/x86_64-linux-gnu/15/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/15/lto-wrapper -plugin-opt=-fresolution=/tmp/ccBmSKoG.res -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_s --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_8973d /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/15 -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/15/../../.. -L/lib -L/usr/lib -v CMakeFiles/cmTC_8973d.dir/CMakeCCompilerABI.c.o -lgcc --push-state --as-needed -lgcc_s --pop-state -lc -lgcc --push-state --as-needed -lgcc_s --pop-state /usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o]
+        linker tool for 'C': /usr/bin/ld -m;elf
+        collapse obj [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/Scrt1.o] ==> [/usr/lib/x86_64-linux-gnu/Scrt1.o]
+        collapse obj [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crti.o] ==> [/usr/lib/x86_64-linux-gnu/crti.o]
+        collapse obj [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu/crtn.o] ==> [/usr/lib/x86_64-linux-gnu/crtn.o]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/15] ==> [/usr/lib/gcc/x86_64-linux-gnu/15]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/15/../../../x86_64-linux-gnu] ==> [/usr/lib/x86_64-linux-gnu]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/15/../../../../lib] ==> [/usr/lib]
+        collapse library dir [/lib/x86_64-linux-gnu] ==> [/lib/x86_64-linux-gnu]
+        collapse library dir [/lib/../lib] ==> [/lib]
+        collapse library dir [/usr/lib/x86_64-linux-gnu] ==> [/usr/lib/x86_64-linux-gnu]
+        collapse library dir [/usr/lib/../lib] ==> [/usr/lib]
+        collapse library dir [/usr/lib/gcc/x86_64-linux-gnu/15/../../..] ==> [/usr/lib]
+        collapse library dir [/lib] ==> [/lib]
+        collapse library dir [/usr/lib] ==> [/usr/lib]
+        implicit libs: [gcc;gcc_s;c;gcc;gcc_s]
+        implicit objs: [/usr/lib/x86_64-linux-gnu/Scrt1.o;/usr/lib/x86_64-linux-gnu/crti.o;/usr/lib/gcc/x86_64-linux-gnu/15/crtbeginS.o;/usr/lib/gcc/x86_64-linux-gnu/15/crtendS.o;/usr/lib/x86_64-linux-gnu/crtn.o]
+        implicit dirs: [/usr/lib/gcc/x86_64-linux-gnu/15;/usr/lib/x86_64-linux-gnu;/usr/lib;/lib/x86_64-linux-gnu;/lib]
+        implicit fwks: []
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/Internal/CMakeDetermineLinkerId.cmake:41 (message)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeDetermineCompilerABI.cmake:337 (cmake_determine_linker_id)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Running the C compiler's linker: "/usr/bin/ld" "-v"
+      GNU ld (GNU Binutils for Ubuntu) 2.46
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:517 (find_program)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindOpenSSL.cmake:295 (find_package)"
+      - "CMakeLists.txt:22 (find_package)"
+    mode: "program"
+    variable: "PKG_CONFIG_EXECUTABLE"
+    description: "pkg-config executable"
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "pkg-config"
+      - "pkgconf"
+    candidate_directories:
+      - "/home/hamim-mahmud/.local/bin/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/"
+      - "/home/hamim-mahmud/.opencode/bin/"
+      - "/home/hamim-mahmud/.miniconda3/bin/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/"
+      - "/home/hamim-mahmud/.cargo/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/usr/bin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/"
+      - "/usr/local/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/"
+      - "/usr/bin/"
+      - "/usr/sbin/"
+      - "/usr/"
+      - "/bin/"
+      - "/sbin/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/bin/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/sbin/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/"
+      - "/usr/X11R6/bin/"
+      - "/usr/X11R6/sbin/"
+      - "/usr/X11R6/"
+      - "/usr/pkg/bin/"
+      - "/usr/pkg/sbin/"
+      - "/usr/pkg/"
+      - "/opt/bin/"
+      - "/opt/sbin/"
+      - "/opt/"
+    searched_directories:
+      - "/home/hamim-mahmud/.local/bin/pkg-config"
+      - "/home/hamim-mahmud/.local/bin/pkgconf"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/pkg-config"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/pkgconf"
+      - "/home/hamim-mahmud/.opencode/bin/pkg-config"
+      - "/home/hamim-mahmud/.opencode/bin/pkgconf"
+      - "/home/hamim-mahmud/.miniconda3/bin/pkg-config"
+      - "/home/hamim-mahmud/.miniconda3/bin/pkgconf"
+      - "/home/hamim-mahmud/.miniconda3/condabin/pkg-config"
+      - "/home/hamim-mahmud/.miniconda3/condabin/pkgconf"
+      - "/home/hamim-mahmud/.cargo/bin/pkg-config"
+      - "/home/hamim-mahmud/.cargo/bin/pkgconf"
+      - "/usr/local/sbin/pkg-config"
+      - "/usr/local/sbin/pkgconf"
+      - "/usr/local/bin/pkg-config"
+      - "/usr/local/bin/pkgconf"
+      - "/usr/sbin/pkg-config"
+      - "/usr/sbin/pkgconf"
+    found: "/usr/bin/pkg-config"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+      CMAKE_INSTALL_PREFIX: "/usr/local"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "/usr/local"
+        - "/usr"
+        - "/"
+        - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data"
+        - "/usr/local"
+        - "/usr/X11R6"
+        - "/usr/pkg"
+        - "/opt"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:761 (find_library)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:811 (_pkg_find_libs)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:1149 (_pkg_recalculate)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:1166 (_pkg_check_modules_internal)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindOpenSSL.cmake:297 (pkg_check_modules)"
+      - "CMakeLists.txt:22 (find_package)"
+    mode: "library"
+    variable: "pkgcfg_lib__OPENSSL_ssl"
+    description: "Path to a library."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "ssl"
+    candidate_directories:
+      - "/usr/lib/x86_64-linux-gnu/"
+    found: "/usr/lib/x86_64-linux-gnu/libssl.so"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+      CMAKE_INSTALL_PREFIX: "/usr/local"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "/usr/local"
+        - "/usr"
+        - "/"
+        - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data"
+        - "/usr/local"
+        - "/usr/X11R6"
+        - "/usr/pkg"
+        - "/opt"
+      CMAKE_SYSTEM_LIBRARY_PATH:
+        - "/usr/lib/X11"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:761 (find_library)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:811 (_pkg_find_libs)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:1149 (_pkg_recalculate)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:1166 (_pkg_check_modules_internal)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindOpenSSL.cmake:297 (pkg_check_modules)"
+      - "CMakeLists.txt:22 (find_package)"
+    mode: "library"
+    variable: "pkgcfg_lib__OPENSSL_crypto"
+    description: "Path to a library."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "crypto"
+    candidate_directories:
+      - "/usr/lib/x86_64-linux-gnu/"
+    found: "/usr/lib/x86_64-linux-gnu/libcrypto.so"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+      CMAKE_INSTALL_PREFIX: "/usr/local"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "/usr/local"
+        - "/usr"
+        - "/"
+        - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data"
+        - "/usr/local"
+        - "/usr/X11R6"
+        - "/usr/pkg"
+        - "/opt"
+      CMAKE_SYSTEM_LIBRARY_PATH:
+        - "/usr/lib/X11"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindOpenSSL.cmake:370 (find_path)"
+      - "CMakeLists.txt:22 (find_package)"
+    mode: "path"
+    variable: "OPENSSL_INCLUDE_DIR"
+    description: "Path to a file."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "openssl/ssl.h"
+    candidate_directories:
+      - "/usr/include/include/"
+      - "/usr/include/"
+      - "/home/hamim-mahmud/.local/bin/include/"
+      - "/home/hamim-mahmud/.local/bin/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/include/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/"
+      - "/home/hamim-mahmud/.opencode/bin/include/"
+      - "/home/hamim-mahmud/.opencode/bin/"
+      - "/home/hamim-mahmud/.miniconda3/bin/include/"
+      - "/home/hamim-mahmud/.miniconda3/bin/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/include/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/"
+      - "/home/hamim-mahmud/.cargo/bin/include/"
+      - "/home/hamim-mahmud/.cargo/bin/"
+      - "/usr/local/sbin/include/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/include/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/include/"
+      - "/usr/sbin/"
+      - "/usr/bin/include/"
+      - "/usr/bin/"
+      - "/sbin/include/"
+      - "/sbin/"
+      - "/bin/include/"
+      - "/bin/"
+      - "/usr/games/include/"
+      - "/usr/games/"
+      - "/usr/local/games/include/"
+      - "/usr/local/games/"
+      - "/snap/bin/include/"
+      - "/snap/bin/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/include/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/"
+      - "/usr/local/include/x86_64-linux-gnu/include/"
+      - "/usr/local/include/x86_64-linux-gnu/"
+      - "/usr/local/include/include/"
+      - "/usr/local/include/"
+      - "/usr/local/include/"
+      - "/usr/local/"
+      - "/usr/include/x86_64-linux-gnu/include/"
+      - "/usr/include/x86_64-linux-gnu/"
+      - "/usr/include/include/"
+      - "/usr/include/"
+      - "/usr/include/"
+      - "/usr/"
+      - "/include/x86_64-linux-gnu/include/"
+      - "/include/x86_64-linux-gnu/"
+      - "/include/include/"
+      - "/include/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/include/x86_64-linux-gnu/include/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/include/x86_64-linux-gnu/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/include/include/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/include/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/include/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/"
+      - "/usr/X11R6/include/x86_64-linux-gnu/include/"
+      - "/usr/X11R6/include/x86_64-linux-gnu/"
+      - "/usr/X11R6/include/include/"
+      - "/usr/X11R6/include/"
+      - "/usr/X11R6/include/"
+      - "/usr/X11R6/"
+      - "/usr/pkg/include/x86_64-linux-gnu/include/"
+      - "/usr/pkg/include/x86_64-linux-gnu/"
+      - "/usr/pkg/include/include/"
+      - "/usr/pkg/include/"
+      - "/usr/pkg/include/"
+      - "/usr/pkg/"
+      - "/opt/include/x86_64-linux-gnu/include/"
+      - "/opt/include/x86_64-linux-gnu/"
+      - "/opt/include/include/"
+      - "/opt/include/"
+      - "/opt/include/"
+      - "/opt/"
+      - "/usr/include/X11/include/"
+      - "/usr/include/X11/"
+    searched_directories:
+      - "/usr/include/include/openssl/ssl.h"
+    found: "/usr/include/"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+      CMAKE_INSTALL_PREFIX: "/usr/local"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "/usr/local"
+        - "/usr"
+        - "/"
+        - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data"
+        - "/usr/local"
+        - "/usr/X11R6"
+        - "/usr/pkg"
+        - "/opt"
+      CMAKE_SYSTEM_INCLUDE_PATH:
+        - "/usr/include/X11"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindOpenSSL.cmake:628 (find_library)"
+      - "CMakeLists.txt:22 (find_package)"
+    mode: "library"
+    variable: "OPENSSL_SSL_LIBRARY"
+    description: "Path to a library."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "ssl"
+      - "ssleay32"
+      - "ssleay32MD"
+    candidate_directories:
+      - "/usr/lib/x86_64-linux-gnu/lib/"
+      - "/usr/lib/x86_64-linux-gnu/lib64/"
+      - "/usr/lib/x86_64-linux-gnu/"
+      - "/home/hamim-mahmud/.local/bin/lib/"
+      - "/home/hamim-mahmud/.local/bin/lib64/"
+      - "/home/hamim-mahmud/.local/bin/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/lib/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/lib64/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/"
+      - "/home/hamim-mahmud/.opencode/bin/lib/"
+      - "/home/hamim-mahmud/.opencode/bin/lib64/"
+      - "/home/hamim-mahmud/.opencode/bin/"
+      - "/home/hamim-mahmud/.miniconda3/bin/lib/"
+      - "/home/hamim-mahmud/.miniconda3/bin/lib64/"
+      - "/home/hamim-mahmud/.miniconda3/bin/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/lib/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/lib64/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/"
+      - "/home/hamim-mahmud/.cargo/bin/lib/"
+      - "/home/hamim-mahmud/.cargo/bin/lib64/"
+      - "/home/hamim-mahmud/.cargo/bin/"
+      - "/usr/local/sbin/lib/"
+      - "/usr/local/sbin/lib64/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/lib/"
+      - "/usr/local/bin/lib64/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/lib/"
+      - "/usr/sbin/lib64/"
+      - "/usr/sbin/"
+      - "/usr/bin/lib/"
+      - "/usr/bin/lib64/"
+      - "/usr/bin/"
+      - "/sbin/lib/"
+      - "/sbin/lib64/"
+      - "/sbin/"
+      - "/bin/lib/"
+      - "/bin/lib64/"
+      - "/bin/"
+      - "/usr/games/lib/"
+      - "/usr/games/lib64/"
+      - "/usr/games/"
+      - "/usr/local/games/lib/"
+      - "/usr/local/games/lib64/"
+      - "/usr/local/games/"
+      - "/snap/bin/lib/"
+      - "/snap/bin/lib64/"
+      - "/snap/bin/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/lib/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/lib64/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/"
+      - "/usr/local/lib/x86_64-linux-gnu/lib/"
+      - "/usr/local/lib/x86_64-linux-gnu/lib64/"
+      - "/usr/local/lib/x86_64-linux-gnu/"
+      - "/usr/local/lib/lib/"
+      - "/usr/local/lib/lib64/"
+      - "/usr/local/lib/"
+      - "/usr/local/lib/"
+      - "/usr/local/lib64/"
+      - "/usr/local/"
+      - "/usr/lib/x86_64-linux-gnu/lib/"
+      - "/usr/lib/x86_64-linux-gnu/lib64/"
+      - "/usr/lib/x86_64-linux-gnu/"
+      - "/usr/lib/lib/"
+      - "/usr/lib/lib64/"
+      - "/usr/lib/"
+      - "/usr/lib/"
+      - "/usr/lib64/"
+      - "/usr/"
+      - "/lib/x86_64-linux-gnu/lib/"
+      - "/lib/x86_64-linux-gnu/lib64/"
+      - "/lib/x86_64-linux-gnu/"
+      - "/lib/lib/"
+      - "/lib/lib64/"
+      - "/lib/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/lib/x86_64-linux-gnu/lib/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/lib/x86_64-linux-gnu/lib64/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/lib/x86_64-linux-gnu/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/lib/lib/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/lib/lib64/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/lib/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/lib/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/lib64/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/"
+      - "/usr/X11R6/lib/x86_64-linux-gnu/lib/"
+      - "/usr/X11R6/lib/x86_64-linux-gnu/lib64/"
+      - "/usr/X11R6/lib/x86_64-linux-gnu/"
+      - "/usr/X11R6/lib/lib/"
+      - "/usr/X11R6/lib/lib64/"
+      - "/usr/X11R6/lib/"
+      - "/usr/X11R6/lib/"
+      - "/usr/X11R6/lib64/"
+      - "/usr/X11R6/"
+      - "/usr/pkg/lib/x86_64-linux-gnu/lib/"
+      - "/usr/pkg/lib/x86_64-linux-gnu/lib64/"
+      - "/usr/pkg/lib/x86_64-linux-gnu/"
+      - "/usr/pkg/lib/lib/"
+      - "/usr/pkg/lib/lib64/"
+      - "/usr/pkg/lib/"
+      - "/usr/pkg/lib/"
+      - "/usr/pkg/lib64/"
+      - "/usr/pkg/"
+      - "/opt/lib/x86_64-linux-gnu/lib/"
+      - "/opt/lib/x86_64-linux-gnu/lib64/"
+      - "/opt/lib/x86_64-linux-gnu/"
+      - "/opt/lib/lib/"
+      - "/opt/lib/lib64/"
+      - "/opt/lib/"
+      - "/opt/lib/"
+      - "/opt/lib64/"
+      - "/opt/"
+      - "/usr/lib/X11/lib/"
+      - "/usr/lib/X11/lib64/"
+      - "/usr/lib/X11/"
+    searched_directories:
+      - "/usr/lib/x86_64-linux-gnu/lib/"
+      - "/usr/lib/x86_64-linux-gnu/lib/"
+      - "/usr/lib/x86_64-linux-gnu/lib/"
+      - "/usr/lib/x86_64-linux-gnu/lib64/"
+      - "/usr/lib/x86_64-linux-gnu/lib64/"
+      - "/usr/lib/x86_64-linux-gnu/lib64/"
+    found: "/usr/lib/x86_64-linux-gnu/libssl.so"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+      CMAKE_INSTALL_PREFIX: "/usr/local"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "/usr/local"
+        - "/usr"
+        - "/"
+        - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data"
+        - "/usr/local"
+        - "/usr/X11R6"
+        - "/usr/pkg"
+        - "/opt"
+      CMAKE_SYSTEM_LIBRARY_PATH:
+        - "/usr/lib/X11"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindOpenSSL.cmake:642 (find_library)"
+      - "CMakeLists.txt:22 (find_package)"
+    mode: "library"
+    variable: "OPENSSL_CRYPTO_LIBRARY"
+    description: "Path to a library."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "crypto"
+    candidate_directories:
+      - "/usr/lib/x86_64-linux-gnu/lib/"
+      - "/usr/lib/x86_64-linux-gnu/lib64/"
+      - "/usr/lib/x86_64-linux-gnu/"
+      - "/home/hamim-mahmud/.local/bin/lib/"
+      - "/home/hamim-mahmud/.local/bin/lib64/"
+      - "/home/hamim-mahmud/.local/bin/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/lib/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/lib64/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/"
+      - "/home/hamim-mahmud/.opencode/bin/lib/"
+      - "/home/hamim-mahmud/.opencode/bin/lib64/"
+      - "/home/hamim-mahmud/.opencode/bin/"
+      - "/home/hamim-mahmud/.miniconda3/bin/lib/"
+      - "/home/hamim-mahmud/.miniconda3/bin/lib64/"
+      - "/home/hamim-mahmud/.miniconda3/bin/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/lib/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/lib64/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/"
+      - "/home/hamim-mahmud/.cargo/bin/lib/"
+      - "/home/hamim-mahmud/.cargo/bin/lib64/"
+      - "/home/hamim-mahmud/.cargo/bin/"
+      - "/usr/local/sbin/lib/"
+      - "/usr/local/sbin/lib64/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/lib/"
+      - "/usr/local/bin/lib64/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/lib/"
+      - "/usr/sbin/lib64/"
+      - "/usr/sbin/"
+      - "/usr/bin/lib/"
+      - "/usr/bin/lib64/"
+      - "/usr/bin/"
+      - "/sbin/lib/"
+      - "/sbin/lib64/"
+      - "/sbin/"
+      - "/bin/lib/"
+      - "/bin/lib64/"
+      - "/bin/"
+      - "/usr/games/lib/"
+      - "/usr/games/lib64/"
+      - "/usr/games/"
+      - "/usr/local/games/lib/"
+      - "/usr/local/games/lib64/"
+      - "/usr/local/games/"
+      - "/snap/bin/lib/"
+      - "/snap/bin/lib64/"
+      - "/snap/bin/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/lib/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/lib64/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/"
+      - "/usr/local/lib/x86_64-linux-gnu/lib/"
+      - "/usr/local/lib/x86_64-linux-gnu/lib64/"
+      - "/usr/local/lib/x86_64-linux-gnu/"
+      - "/usr/local/lib/lib/"
+      - "/usr/local/lib/lib64/"
+      - "/usr/local/lib/"
+      - "/usr/local/lib/"
+      - "/usr/local/lib64/"
+      - "/usr/local/"
+      - "/usr/lib/x86_64-linux-gnu/lib/"
+      - "/usr/lib/x86_64-linux-gnu/lib64/"
+      - "/usr/lib/x86_64-linux-gnu/"
+      - "/usr/lib/lib/"
+      - "/usr/lib/lib64/"
+      - "/usr/lib/"
+      - "/usr/lib/"
+      - "/usr/lib64/"
+      - "/usr/"
+      - "/lib/x86_64-linux-gnu/lib/"
+      - "/lib/x86_64-linux-gnu/lib64/"
+      - "/lib/x86_64-linux-gnu/"
+      - "/lib/lib/"
+      - "/lib/lib64/"
+      - "/lib/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/lib/x86_64-linux-gnu/lib/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/lib/x86_64-linux-gnu/lib64/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/lib/x86_64-linux-gnu/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/lib/lib/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/lib/lib64/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/lib/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/lib/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/lib64/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/"
+      - "/usr/X11R6/lib/x86_64-linux-gnu/lib/"
+      - "/usr/X11R6/lib/x86_64-linux-gnu/lib64/"
+      - "/usr/X11R6/lib/x86_64-linux-gnu/"
+      - "/usr/X11R6/lib/lib/"
+      - "/usr/X11R6/lib/lib64/"
+      - "/usr/X11R6/lib/"
+      - "/usr/X11R6/lib/"
+      - "/usr/X11R6/lib64/"
+      - "/usr/X11R6/"
+      - "/usr/pkg/lib/x86_64-linux-gnu/lib/"
+      - "/usr/pkg/lib/x86_64-linux-gnu/lib64/"
+      - "/usr/pkg/lib/x86_64-linux-gnu/"
+      - "/usr/pkg/lib/lib/"
+      - "/usr/pkg/lib/lib64/"
+      - "/usr/pkg/lib/"
+      - "/usr/pkg/lib/"
+      - "/usr/pkg/lib64/"
+      - "/usr/pkg/"
+      - "/opt/lib/x86_64-linux-gnu/lib/"
+      - "/opt/lib/x86_64-linux-gnu/lib64/"
+      - "/opt/lib/x86_64-linux-gnu/"
+      - "/opt/lib/lib/"
+      - "/opt/lib/lib64/"
+      - "/opt/lib/"
+      - "/opt/lib/"
+      - "/opt/lib64/"
+      - "/opt/"
+      - "/usr/lib/X11/lib/"
+      - "/usr/lib/X11/lib64/"
+      - "/usr/lib/X11/"
+    searched_directories:
+      - "/usr/lib/x86_64-linux-gnu/lib/"
+      - "/usr/lib/x86_64-linux-gnu/lib64/"
+    found: "/usr/lib/x86_64-linux-gnu/libcrypto.so"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+      CMAKE_INSTALL_PREFIX: "/usr/local"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "/usr/local"
+        - "/usr"
+        - "/"
+        - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data"
+        - "/usr/local"
+        - "/usr/X11R6"
+        - "/usr/pkg"
+        - "/opt"
+      CMAKE_SYSTEM_LIBRARY_PATH:
+        - "/usr/lib/X11"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:761 (find_library)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:811 (_pkg_find_libs)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:1149 (_pkg_recalculate)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:1166 (_pkg_check_modules_internal)"
+      - "CMakeLists.txt:24 (pkg_check_modules)"
+    mode: "library"
+    variable: "pkgcfg_lib_LIBUV_uv"
+    description: "Path to a library."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "uv"
+    candidate_directories:
+      - "/usr/lib/x86_64-linux-gnu/"
+    found: "/usr/lib/x86_64-linux-gnu/libuv.so"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+      CMAKE_INSTALL_PREFIX: "/usr/local"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "/usr/local"
+        - "/usr"
+        - "/"
+        - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data"
+        - "/usr/local"
+        - "/usr/X11R6"
+        - "/usr/pkg"
+        - "/opt"
+      CMAKE_SYSTEM_LIBRARY_PATH:
+        - "/usr/lib/X11"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:761 (find_library)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:811 (_pkg_find_libs)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:1149 (_pkg_recalculate)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:1166 (_pkg_check_modules_internal)"
+      - "CMakeLists.txt:24 (pkg_check_modules)"
+    mode: "library"
+    variable: "pkgcfg_lib_LIBUV_pthread"
+    description: "Path to a library."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "pthread"
+    candidate_directories:
+      - "/usr/lib/x86_64-linux-gnu/"
+    found: "/usr/lib/x86_64-linux-gnu/libpthread.a"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+      CMAKE_INSTALL_PREFIX: "/usr/local"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "/usr/local"
+        - "/usr"
+        - "/"
+        - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data"
+        - "/usr/local"
+        - "/usr/X11R6"
+        - "/usr/pkg"
+        - "/opt"
+      CMAKE_SYSTEM_LIBRARY_PATH:
+        - "/usr/lib/X11"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:761 (find_library)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:811 (_pkg_find_libs)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:1149 (_pkg_recalculate)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:1166 (_pkg_check_modules_internal)"
+      - "CMakeLists.txt:24 (pkg_check_modules)"
+    mode: "library"
+    variable: "pkgcfg_lib_LIBUV_dl"
+    description: "Path to a library."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "dl"
+    candidate_directories:
+      - "/usr/lib/x86_64-linux-gnu/"
+    found: "/usr/lib/x86_64-linux-gnu/libdl.a"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+      CMAKE_INSTALL_PREFIX: "/usr/local"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "/usr/local"
+        - "/usr"
+        - "/"
+        - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data"
+        - "/usr/local"
+        - "/usr/X11R6"
+        - "/usr/pkg"
+        - "/opt"
+      CMAKE_SYSTEM_LIBRARY_PATH:
+        - "/usr/lib/X11"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:761 (find_library)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:811 (_pkg_find_libs)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:1149 (_pkg_recalculate)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:1166 (_pkg_check_modules_internal)"
+      - "CMakeLists.txt:24 (pkg_check_modules)"
+    mode: "library"
+    variable: "pkgcfg_lib_LIBUV_rt"
+    description: "Path to a library."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "rt"
+    candidate_directories:
+      - "/usr/lib/x86_64-linux-gnu/"
+    found: "/usr/lib/x86_64-linux-gnu/librt.a"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+      CMAKE_INSTALL_PREFIX: "/usr/local"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "/usr/local"
+        - "/usr"
+        - "/"
+        - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data"
+        - "/usr/local"
+        - "/usr/X11R6"
+        - "/usr/pkg"
+        - "/opt"
+      CMAKE_SYSTEM_LIBRARY_PATH:
+        - "/usr/lib/X11"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:761 (find_library)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:811 (_pkg_find_libs)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:1149 (_pkg_recalculate)"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/FindPkgConfig.cmake:1166 (_pkg_check_modules_internal)"
+      - "CMakeLists.txt:24 (pkg_check_modules)"
+    mode: "library"
+    variable: "pkgcfg_lib_LIBUV_m"
+    description: "Path to a library."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "m"
+    candidate_directories:
+      - "/usr/lib/x86_64-linux-gnu/"
+    found: "/usr/lib/x86_64-linux-gnu/libm.so"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+      CMAKE_INSTALL_PREFIX: "/usr/local"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "/usr/local"
+        - "/usr"
+        - "/"
+        - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data"
+        - "/usr/local"
+        - "/usr/X11R6"
+        - "/usr/pkg"
+        - "/opt"
+      CMAKE_SYSTEM_LIBRARY_PATH:
+        - "/usr/lib/X11"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CTest.cmake:188 (find_program)"
+      - "common/tests/CMakeLists.txt:1 (include)"
+    mode: "program"
+    variable: "MEMORYCHECK_COMMAND"
+    description: "Path to the memory checking command, used for memory error detection."
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "purify"
+      - "valgrind"
+      - "boundscheck"
+      - "drmemory"
+      - "cuda-memcheck"
+      - "compute-sanitizer"
+    candidate_directories:
+      - "/home/hamim-mahmud/.local/bin/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/"
+      - "/home/hamim-mahmud/.opencode/bin/"
+      - "/home/hamim-mahmud/.miniconda3/bin/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/"
+      - "/home/hamim-mahmud/.cargo/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/usr/bin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/"
+      - "/usr/local/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/"
+      - "/usr/bin/"
+      - "/usr/sbin/"
+      - "/usr/"
+      - "/bin/"
+      - "/sbin/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/bin/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/sbin/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/"
+      - "/usr/X11R6/bin/"
+      - "/usr/X11R6/sbin/"
+      - "/usr/X11R6/"
+      - "/usr/pkg/bin/"
+      - "/usr/pkg/sbin/"
+      - "/usr/pkg/"
+      - "/opt/bin/"
+      - "/opt/sbin/"
+      - "/opt/"
+    searched_directories:
+      - "/home/hamim-mahmud/.local/bin/purify"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/purify"
+      - "/home/hamim-mahmud/.opencode/bin/purify"
+      - "/home/hamim-mahmud/.miniconda3/bin/purify"
+      - "/home/hamim-mahmud/.miniconda3/condabin/purify"
+      - "/home/hamim-mahmud/.cargo/bin/purify"
+      - "/usr/local/sbin/purify"
+      - "/usr/local/bin/purify"
+      - "/usr/sbin/purify"
+      - "/usr/bin/purify"
+      - "/sbin/purify"
+      - "/bin/purify"
+      - "/usr/games/purify"
+      - "/usr/local/games/purify"
+      - "/snap/bin/purify"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/purify"
+      - "/usr/local/bin/purify"
+      - "/usr/local/sbin/purify"
+      - "/usr/local/purify"
+      - "/usr/bin/purify"
+      - "/usr/sbin/purify"
+      - "/usr/purify"
+      - "/bin/purify"
+      - "/sbin/purify"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/bin/purify"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/sbin/purify"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/purify"
+      - "/usr/X11R6/bin/purify"
+      - "/usr/X11R6/sbin/purify"
+      - "/usr/X11R6/purify"
+      - "/usr/pkg/bin/purify"
+      - "/usr/pkg/sbin/purify"
+      - "/usr/pkg/purify"
+      - "/opt/bin/purify"
+      - "/opt/sbin/purify"
+      - "/opt/purify"
+      - "/home/hamim-mahmud/.local/bin/valgrind"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/valgrind"
+      - "/home/hamim-mahmud/.opencode/bin/valgrind"
+      - "/home/hamim-mahmud/.miniconda3/bin/valgrind"
+      - "/home/hamim-mahmud/.miniconda3/condabin/valgrind"
+      - "/home/hamim-mahmud/.cargo/bin/valgrind"
+      - "/usr/local/sbin/valgrind"
+      - "/usr/local/bin/valgrind"
+      - "/usr/sbin/valgrind"
+      - "/usr/bin/valgrind"
+      - "/sbin/valgrind"
+      - "/bin/valgrind"
+      - "/usr/games/valgrind"
+      - "/usr/local/games/valgrind"
+      - "/snap/bin/valgrind"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/valgrind"
+      - "/usr/local/bin/valgrind"
+      - "/usr/local/sbin/valgrind"
+      - "/usr/local/valgrind"
+      - "/usr/bin/valgrind"
+      - "/usr/sbin/valgrind"
+      - "/usr/valgrind"
+      - "/bin/valgrind"
+      - "/sbin/valgrind"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/bin/valgrind"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/sbin/valgrind"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/valgrind"
+      - "/usr/X11R6/bin/valgrind"
+      - "/usr/X11R6/sbin/valgrind"
+      - "/usr/X11R6/valgrind"
+      - "/usr/pkg/bin/valgrind"
+      - "/usr/pkg/sbin/valgrind"
+      - "/usr/pkg/valgrind"
+      - "/opt/bin/valgrind"
+      - "/opt/sbin/valgrind"
+      - "/opt/valgrind"
+      - "/home/hamim-mahmud/.local/bin/boundscheck"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/boundscheck"
+      - "/home/hamim-mahmud/.opencode/bin/boundscheck"
+      - "/home/hamim-mahmud/.miniconda3/bin/boundscheck"
+      - "/home/hamim-mahmud/.miniconda3/condabin/boundscheck"
+      - "/home/hamim-mahmud/.cargo/bin/boundscheck"
+      - "/usr/local/sbin/boundscheck"
+      - "/usr/local/bin/boundscheck"
+      - "/usr/sbin/boundscheck"
+      - "/usr/bin/boundscheck"
+      - "/sbin/boundscheck"
+      - "/bin/boundscheck"
+      - "/usr/games/boundscheck"
+      - "/usr/local/games/boundscheck"
+      - "/snap/bin/boundscheck"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/boundscheck"
+      - "/usr/local/bin/boundscheck"
+      - "/usr/local/sbin/boundscheck"
+      - "/usr/local/boundscheck"
+      - "/usr/bin/boundscheck"
+      - "/usr/sbin/boundscheck"
+      - "/usr/boundscheck"
+      - "/bin/boundscheck"
+      - "/sbin/boundscheck"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/bin/boundscheck"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/sbin/boundscheck"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/boundscheck"
+      - "/usr/X11R6/bin/boundscheck"
+      - "/usr/X11R6/sbin/boundscheck"
+      - "/usr/X11R6/boundscheck"
+      - "/usr/pkg/bin/boundscheck"
+      - "/usr/pkg/sbin/boundscheck"
+      - "/usr/pkg/boundscheck"
+      - "/opt/bin/boundscheck"
+      - "/opt/sbin/boundscheck"
+      - "/opt/boundscheck"
+      - "/home/hamim-mahmud/.local/bin/drmemory"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/drmemory"
+      - "/home/hamim-mahmud/.opencode/bin/drmemory"
+      - "/home/hamim-mahmud/.miniconda3/bin/drmemory"
+      - "/home/hamim-mahmud/.miniconda3/condabin/drmemory"
+      - "/home/hamim-mahmud/.cargo/bin/drmemory"
+      - "/usr/local/sbin/drmemory"
+      - "/usr/local/bin/drmemory"
+      - "/usr/sbin/drmemory"
+      - "/usr/bin/drmemory"
+      - "/sbin/drmemory"
+      - "/bin/drmemory"
+      - "/usr/games/drmemory"
+      - "/usr/local/games/drmemory"
+      - "/snap/bin/drmemory"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/drmemory"
+      - "/usr/local/bin/drmemory"
+      - "/usr/local/sbin/drmemory"
+      - "/usr/local/drmemory"
+      - "/usr/bin/drmemory"
+      - "/usr/sbin/drmemory"
+      - "/usr/drmemory"
+      - "/bin/drmemory"
+      - "/sbin/drmemory"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/bin/drmemory"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/sbin/drmemory"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/drmemory"
+      - "/usr/X11R6/bin/drmemory"
+      - "/usr/X11R6/sbin/drmemory"
+      - "/usr/X11R6/drmemory"
+      - "/usr/pkg/bin/drmemory"
+      - "/usr/pkg/sbin/drmemory"
+      - "/usr/pkg/drmemory"
+      - "/opt/bin/drmemory"
+      - "/opt/sbin/drmemory"
+      - "/opt/drmemory"
+      - "/home/hamim-mahmud/.local/bin/cuda-memcheck"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/cuda-memcheck"
+      - "/home/hamim-mahmud/.opencode/bin/cuda-memcheck"
+      - "/home/hamim-mahmud/.miniconda3/bin/cuda-memcheck"
+      - "/home/hamim-mahmud/.miniconda3/condabin/cuda-memcheck"
+      - "/home/hamim-mahmud/.cargo/bin/cuda-memcheck"
+      - "/usr/local/sbin/cuda-memcheck"
+      - "/usr/local/bin/cuda-memcheck"
+      - "/usr/sbin/cuda-memcheck"
+      - "/usr/bin/cuda-memcheck"
+      - "/sbin/cuda-memcheck"
+      - "/bin/cuda-memcheck"
+      - "/usr/games/cuda-memcheck"
+      - "/usr/local/games/cuda-memcheck"
+      - "/snap/bin/cuda-memcheck"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/cuda-memcheck"
+      - "/usr/local/bin/cuda-memcheck"
+      - "/usr/local/sbin/cuda-memcheck"
+      - "/usr/local/cuda-memcheck"
+      - "/usr/bin/cuda-memcheck"
+      - "/usr/sbin/cuda-memcheck"
+      - "/usr/cuda-memcheck"
+      - "/bin/cuda-memcheck"
+      - "/sbin/cuda-memcheck"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/bin/cuda-memcheck"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/sbin/cuda-memcheck"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/cuda-memcheck"
+      - "/usr/X11R6/bin/cuda-memcheck"
+      - "/usr/X11R6/sbin/cuda-memcheck"
+      - "/usr/X11R6/cuda-memcheck"
+      - "/usr/pkg/bin/cuda-memcheck"
+      - "/usr/pkg/sbin/cuda-memcheck"
+      - "/usr/pkg/cuda-memcheck"
+      - "/opt/bin/cuda-memcheck"
+      - "/opt/sbin/cuda-memcheck"
+      - "/opt/cuda-memcheck"
+      - "/home/hamim-mahmud/.local/bin/compute-sanitizer"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/compute-sanitizer"
+      - "/home/hamim-mahmud/.opencode/bin/compute-sanitizer"
+      - "/home/hamim-mahmud/.miniconda3/bin/compute-sanitizer"
+      - "/home/hamim-mahmud/.miniconda3/condabin/compute-sanitizer"
+      - "/home/hamim-mahmud/.cargo/bin/compute-sanitizer"
+      - "/usr/local/sbin/compute-sanitizer"
+      - "/usr/local/bin/compute-sanitizer"
+      - "/usr/sbin/compute-sanitizer"
+    found: "/usr/bin/compute-sanitizer"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+      CMAKE_INSTALL_PREFIX: "/usr/local"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "/usr/local"
+        - "/usr"
+        - "/"
+        - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data"
+        - "/usr/local"
+        - "/usr/X11R6"
+        - "/usr/pkg"
+        - "/opt"
+  -
+    kind: "find-v1"
+    backtrace:
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/share/cmake-4.4/Modules/CTest.cmake:196 (find_program)"
+      - "common/tests/CMakeLists.txt:1 (include)"
+    mode: "program"
+    variable: "COVERAGE_COMMAND"
+    description: "Path to the coverage program that CTest uses for performing coverage inspection"
+    settings:
+      SearchFramework: "NEVER"
+      SearchAppBundle: "NEVER"
+      CMAKE_FIND_USE_CMAKE_PATH: true
+      CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_SYSTEM_ENVIRONMENT_PATH: true
+      CMAKE_FIND_USE_CMAKE_SYSTEM_PATH: true
+      CMAKE_FIND_USE_INSTALL_PREFIX: true
+    names:
+      - "gcov"
+    candidate_directories:
+      - "/home/hamim-mahmud/.local/bin/"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/"
+      - "/home/hamim-mahmud/.opencode/bin/"
+      - "/home/hamim-mahmud/.miniconda3/bin/"
+      - "/home/hamim-mahmud/.miniconda3/condabin/"
+      - "/home/hamim-mahmud/.cargo/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/bin/"
+      - "/usr/sbin/"
+      - "/usr/bin/"
+      - "/sbin/"
+      - "/bin/"
+      - "/usr/games/"
+      - "/usr/local/games/"
+      - "/snap/bin/"
+      - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64/"
+      - "/usr/local/bin/"
+      - "/usr/local/sbin/"
+      - "/usr/local/"
+      - "/usr/bin/"
+      - "/usr/sbin/"
+      - "/usr/"
+      - "/bin/"
+      - "/sbin/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/bin/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/sbin/"
+      - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data/"
+      - "/usr/X11R6/bin/"
+      - "/usr/X11R6/sbin/"
+      - "/usr/X11R6/"
+      - "/usr/pkg/bin/"
+      - "/usr/pkg/sbin/"
+      - "/usr/pkg/"
+      - "/opt/bin/"
+      - "/opt/sbin/"
+      - "/opt/"
+    searched_directories:
+      - "/home/hamim-mahmud/.local/bin/gcov"
+      - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu/gcov"
+      - "/home/hamim-mahmud/.opencode/bin/gcov"
+      - "/home/hamim-mahmud/.miniconda3/bin/gcov"
+      - "/home/hamim-mahmud/.miniconda3/condabin/gcov"
+      - "/home/hamim-mahmud/.cargo/bin/gcov"
+      - "/usr/local/sbin/gcov"
+      - "/usr/local/bin/gcov"
+      - "/usr/sbin/gcov"
+    found: "/usr/bin/gcov"
+    search_context:
+      ENV{PATH}:
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.codex/tmp/arg0/codex-arg0pI7oJu"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.opencode/bin"
+        - "/home/hamim-mahmud/.miniconda3/bin"
+        - "/home/hamim-mahmud/.miniconda3/condabin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/home/hamim-mahmud/.cargo/bin"
+        - "/home/hamim-mahmud/.local/bin"
+        - "/usr/local/sbin"
+        - "/usr/local/bin"
+        - "/usr/sbin"
+        - "/usr/bin"
+        - "/sbin"
+        - "/bin"
+        - "/usr/games"
+        - "/usr/local/games"
+        - "/snap/bin"
+        - "/snap/bin"
+        - "/home/hamim-mahmud/.vscode/extensions/openai.chatgpt-26.810.52044-linux-x64/bin/linux-x86_64"
+      CMAKE_INSTALL_PREFIX: "/usr/local"
+      CMAKE_SYSTEM_PREFIX_PATH:
+        - "/usr/local"
+        - "/usr"
+        - "/"
+        - "/home/hamim-mahmud/.miniconda3/lib/python3.13/site-packages/cmake/data"
+        - "/usr/local"
+        - "/usr/X11R6"
+        - "/usr/pkg"
+        - "/opt"
+...

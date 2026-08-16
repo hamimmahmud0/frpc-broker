@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tunnelmate-control"
+version = "0.1.0"
+description = "TunnelMate FastAPI control plane and admin console"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "uvicorn[standard]>=0.34,<1",
+  "pydantic>=2.10,<3",
+  "jinja2>=3.1,<4",
+]
+
+[project.optional-dependencies]
+dev = ["httpx>=0.28,<1", "pytest>=8,<10", "ruff>=0.9"]
+
+[project.scripts]
+tunnelmate-api = "tunnelmate_api.main:run"
+tunnelmate-admin = "tunnelmate_api.security:bootstrap_cli"
+
+[tool.hatch.build.targets.wheel]
+packages = ["tunnelmate_api"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

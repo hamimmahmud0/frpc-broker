@@ -1,6 +1,7 @@
 #include "agent.h"
 #include "tunnelmate/net.h"
 #include "tunnelmate/crypto.h"
+#include "tunnelmate/tls.h"
 
 /* Control connection lifecycle: connect (with backoff), TLS 1.3 handshake,
    HELLO/REGISTER, heartbeat, frame dispatch, reconnect on drop. */
@@ -11,6 +12,14 @@ static void ctl_eof(tm_io *io, void *arg);
 static void ctl_error(tm_io *io, int err, void *arg);
 static void agent_hb_timer_cb(uv_timer_t *t);
 static void reconnect_timer_cb(uv_timer_t *t);
+
+static uint64_t reconnect_with_jitter(tm_agent_app *a) {
+    uint64_t delay = a->reconnect_delay_ms;
+    uint64_t spread = delay / 5u;
+    if (!spread) return delay;
+    uint64_t sample = uv_hrtime();
+    return delay - spread + sample % (spread * 2u + 1u);
+}
 
 void tm_agent_send_frame(tm_agent_app *a, tm_frame *f) {
     if (!a->ctl_io) { tm_frame_free(f); return; }
@@ -40,8 +49,14 @@ static void ctl_connected(uv_connect_t *req, int status) {
         tm_agent_disconnect(a, "connect failed");
         return;
     }
+    a->connecting = false;
     a->ctl_ssl = SSL_new(a->tls_ctx);
     if (!a->ctl_ssl) { tm_agent_disconnect(a, "ssl_new"); return; }
+    if (tm_tls_configure_client_ssl(a->ctl_ssl, a->cfg.broker_host,
+                                    a->cfg.verify_ca) != TM_OK) {
+        tm_agent_disconnect(a, "hostname verification setup");
+        return;
+    }
     a->ctl_io = tm_io_ssl_new(a->loop, (uv_stream_t *)&a->ctl_sock, a->ctl_ssl,
                               false, true, &(tm_io_cbs){
                                   .ready_cb = ctl_handshake_done,
@@ -103,6 +118,8 @@ static void ctl_read(tm_io *io, const uint8_t *data, size_t len, void *arg) {
         case TM_MSG_REGISTER_OK:
             if (!a->registered) {
                 a->registered = true;
+                a->reconnect_delay_ms = (uint64_t)a->cfg.reconnect_delay_ms;
+                if (a->cfg.proto == TM_PROTO_UDP) tm_agent_udp_start(a);
                 tm_log_info(a->log, "registered", NULL, NULL, "tunnel=%s port=%s",
                             a->cfg.tunnel_id, a->cfg.local_host);
                 uv_timer_start(&a->hb_timer, agent_hb_timer_cb,
@@ -168,7 +185,7 @@ static void agent_hb_timer_cb(uv_timer_t *t) {
 }
 
 void tm_agent_disconnect(tm_agent_app *a, const char *reason) {
-    if (!a->connected && !a->registered) return;
+    if (!a->connecting && !a->connected && !a->registered) return;
     bool was_registered = a->registered;
     tm_log_info(a->log, "disconnected", NULL, NULL, "reason=%s", reason);
     if (a->ctl_io) { tm_io_close(a->ctl_io); a->ctl_io = NULL; }
@@ -181,6 +198,7 @@ void tm_agent_disconnect(tm_agent_app *a, const char *reason) {
     uv_timer_stop(&a->hb_timer);
     uv_timer_stop(&a->hs_timer);
     a->connected = false;
+    a->connecting = false;
     a->registered = false;
     a->got_hello = false;
     if (was_registered) {
@@ -191,14 +209,15 @@ void tm_agent_disconnect(tm_agent_app *a, const char *reason) {
             tm_astream_close(a, st);
             st = nxt;
         }
-        tm_agent_udp_stop(a);
+        if (a->cfg.proto == TM_PROTO_UDP) tm_agent_udp_stop(a);
     }
     if (a->shutting_down) return;
     /* schedule reconnect with backoff */
     a->reconnect_delay_ms = a->reconnect_delay_ms * 2;
     if (a->reconnect_delay_ms > (uint64_t)a->cfg.reconnect_max_delay_ms)
         a->reconnect_delay_ms = (uint64_t)a->cfg.reconnect_max_delay_ms;
-    uv_timer_start(&a->reconnect_timer, reconnect_timer_cb, a->reconnect_delay_ms, 0);
+    uv_timer_start(&a->reconnect_timer, reconnect_timer_cb,
+                   reconnect_with_jitter(a), 0);
 }
 
 static void reconnect_timer_cb(uv_timer_t *t) {
@@ -207,16 +226,18 @@ static void reconnect_timer_cb(uv_timer_t *t) {
 }
 
 void tm_agent_connect(tm_agent_app *a) {
-    if (a->shutting_down || a->connected) return;
-    a->reconnect_delay_ms = (uint64_t)a->cfg.reconnect_delay_ms;
+    if (a->shutting_down || a->connected || a->connecting) return;
+    if (!a->reconnect_delay_ms)
+        a->reconnect_delay_ms = (uint64_t)a->cfg.reconnect_delay_ms;
     int r = tm_tcp_connect(a->loop, &a->ctl_sock, a->cfg.broker_host,
                            a->cfg.broker_port, ctl_connected, a);
     if (r != TM_OK) {
         tm_log_warn(a->log, "resolve_failed", NULL, NULL, "%s", a->cfg.broker_host);
         uv_timer_start(&a->reconnect_timer, reconnect_timer_cb,
-                       a->reconnect_delay_ms, 0);
+                       reconnect_with_jitter(a), 0);
         return;
     }
+    a->connecting = true;
     tm_log_info(a->log, "connecting", NULL, NULL, "%s:%u",
                 a->cfg.broker_host, (unsigned)a->cfg.broker_port);
 }

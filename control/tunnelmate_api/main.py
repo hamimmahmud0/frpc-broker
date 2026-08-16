@@ -1,0 +1,1179 @@
+from __future__ import annotations
+
+import asyncio
+import ipaddress
+import json
+import os
+import secrets
+import sqlite3
+import time
+from collections import defaultdict, deque
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import Any
+from urllib.parse import parse_qs
+
+import uvicorn
+from fastapi import FastAPI, Header, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from .broker import BrokerClient, BrokerError, BrokerUnavailable
+from .config import Settings
+from .db import Database
+from .models import (
+    AdminAnnouncementPatch,
+    AnnouncementCreate,
+    AnnouncementPatch,
+    BlockIPCreate,
+    TunnelCreate,
+    TunnelPatch,
+    validate_attributes,
+)
+from .security import audit, bootstrap_admin, capability_hmac, verify_capability, verify_password
+
+BASE = Path(__file__).resolve().parent.parent
+
+
+class APIError(Exception):
+    def __init__(self, status: int, code: str, message: str):
+        self.status = status
+        self.code = code
+        self.message = message
+
+
+class RateWindow:
+    def __init__(self) -> None:
+        self.entries: dict[str, deque[float]] = defaultdict(deque)
+
+    def allow(self, key: str, limit: int, seconds: int = 60) -> bool:
+        now = time.monotonic()
+        q = self.entries[key]
+        while q and q[0] <= now - seconds:
+            q.popleft()
+        if len(q) >= limit:
+            return False
+        q.append(now)
+        return True
+
+
+def now_s() -> int:
+    return int(time.time())
+
+
+def public_id(prefix: str, bytes_: int = 12) -> str:
+    return prefix + secrets.token_urlsafe(bytes_).rstrip("=")
+
+
+def client_ip(request: Request) -> str:
+    return request.client.host if request.client else "unknown"
+
+
+def row_dict(row: Any) -> dict[str, Any]:
+    return dict(row) if row is not None else {}
+
+
+async def restore_runtime(app: FastAPI) -> None:
+    db: Database = app.state.db
+    broker: BrokerClient = app.state.broker
+    rows = (
+        db.connect()
+        .execute(
+            "SELECT * FROM tunnels WHERE deleted=0 AND expires_at>? ORDER BY created_at", (now_s(),)
+        )
+        .fetchall()
+    )
+    try:
+        runtime = await broker.call("get_tunnels")
+        existing = {item["id"] for item in runtime.get("tunnels", [])}
+    except (BrokerError, BrokerUnavailable):
+        return
+    for row in rows:
+        if row["tunnel_id"] in existing:
+            continue
+        try:
+            await broker.call(
+                "create_tunnel",
+                tunnel_id=row["tunnel_id"],
+                proto=row["protocol"],
+                closed=row["scope"] == "closed",
+                prefer_port=row["public_port"],
+                agent_secret_hmac=row["agent_secret_hmac"],
+                shared_token_hmac=row["shared_token_hmac"],
+            )
+            if not row["enabled"]:
+                await broker.call("disable_tunnel", tunnel_id=row["tunnel_id"])
+        except (BrokerError, BrokerUnavailable):
+            continue
+
+
+async def lease_reaper(app: FastAPI) -> None:
+    while True:
+        await asyncio.sleep(30)
+        db: Database = app.state.db
+        rows = (
+            db.connect()
+            .execute("SELECT tunnel_id FROM tunnels WHERE deleted=0 AND expires_at<=?", (now_s(),))
+            .fetchall()
+        )
+        for row in rows:
+            try:
+                await app.state.broker.call("delete_tunnel", tunnel_id=row["tunnel_id"])
+            except (BrokerError, BrokerUnavailable):
+                pass
+            db.connect().execute(
+                "UPDATE tunnels SET deleted=1,enabled=0,updated_at=? WHERE tunnel_id=?",
+                (now_s(), row["tunnel_id"]),
+            )
+
+
+def create_app(settings: Settings | None = None) -> FastAPI:
+    settings = settings or Settings.from_env()
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        app.state.db.initialize()
+        if settings.admin_username and settings.admin_password:
+            bootstrap_admin(app.state.db, settings.admin_username, settings.admin_password)
+        await restore_runtime(app)
+        reaper = asyncio.create_task(lease_reaper(app))
+        yield
+        reaper.cancel()
+        try:
+            await reaper
+        except asyncio.CancelledError:
+            pass
+        app.state.db.close()
+
+    docs_url = "/docs" if settings.docs_enabled else None
+    redoc_url = "/redoc" if settings.docs_enabled else None
+    openapi_url = "/openapi.json" if settings.docs_enabled else None
+    app = FastAPI(
+        title="TunnelMate Control API",
+        version="0.1.0",
+        description="Anonymous capability-based TCP and UDP reverse tunnels.",
+        docs_url=docs_url,
+        redoc_url=redoc_url,
+        openapi_url=openapi_url,
+        lifespan=lifespan,
+    )
+    app.state.settings = settings
+    app.state.db = Database(settings.db_path)
+    app.state.broker = BrokerClient(settings.broker_socket)
+    app.state.create_rate = RateWindow()
+    app.state.login_rate = RateWindow()
+    app.state.templates = Jinja2Templates(directory=str(BASE / "templates"))
+    app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
+
+    @app.middleware("http")
+    async def request_context(request: Request, call_next: Any) -> Any:
+        request_id = request.headers.get("x-request-id", "")
+        if not request_id.startswith("req_") or len(request_id) > 80:
+            request_id = public_id("req_", 9)
+        request.state.request_id = request_id
+        length = request.headers.get("content-length")
+        response: Any | None = None
+        if length:
+            try:
+                if int(length) > settings.max_request_bytes:
+                    response = JSONResponse(
+                        {
+                            "error": {
+                                "code": "REQUEST_TOO_LARGE",
+                                "message": "Request body is too large.",
+                                "request_id": request_id,
+                            }
+                        },
+                        status_code=413,
+                    )
+            except ValueError:
+                response = JSONResponse(
+                    {
+                        "error": {
+                            "code": "INVALID_CONTENT_LENGTH",
+                            "message": "Invalid Content-Length header.",
+                            "request_id": request_id,
+                        }
+                    },
+                    status_code=400,
+                )
+        if response is None:
+            response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; style-src 'self'; script-src 'self'; "
+            "img-src 'self' data:; frame-ancestors 'none'"
+        )
+        return response
+
+    def error_payload(request: Request, code: str, message: str) -> dict[str, Any]:
+        return {"error": {"code": code, "message": message, "request_id": request.state.request_id}}
+
+    @app.exception_handler(APIError)
+    async def api_error(request: Request, exc: APIError) -> JSONResponse:
+        return JSONResponse(error_payload(request, exc.code, exc.message), status_code=exc.status)
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
+        return JSONResponse(
+            {
+                **error_payload(request, "VALIDATION_ERROR", "Request validation failed."),
+                "details": exc.errors(),
+            },
+            status_code=422,
+        )
+
+    @app.exception_handler(StarletteHTTPException)
+    async def http_error(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+        code = "NOT_FOUND" if exc.status_code == 404 else "HTTP_ERROR"
+        return JSONResponse(
+            error_payload(request, code, str(exc.detail)), status_code=exc.status_code
+        )
+
+    def ensure_not_blocked(ip: str) -> None:
+        try:
+            addr = ipaddress.ip_address(ip)
+        except ValueError:
+            return
+        rows = app.state.db.connect().execute("SELECT cidr FROM blocked_ips").fetchall()
+        for row in rows:
+            try:
+                if addr in ipaddress.ip_network(row["cidr"], strict=False):
+                    raise APIError(403, "SOURCE_BLOCKED", "Tunnel creation is not available.")
+            except ValueError:
+                continue
+
+    def tunnel_for_owner(tunnel_id: str, secret: str | None) -> Any:
+        row = (
+            app.state.db.connect()
+            .execute("SELECT * FROM tunnels WHERE tunnel_id=?", (tunnel_id,))
+            .fetchone()
+        )
+        if (
+            not row
+            or row["deleted"]
+            or not secret
+            or not verify_capability(settings.secret_key, secret, row["management_hmac"])
+        ):
+            raise APIError(404, "TUNNEL_NOT_FOUND", "Tunnel was not found.")
+        return row
+
+    async def runtime_map() -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
+        try:
+            payload = await app.state.broker.call("get_tunnels")
+        except (BrokerError, BrokerUnavailable):
+            return {}, {}
+        return {item["id"]: item for item in payload.get("tunnels", [])}, payload.get("now", {})
+
+    def tunnel_public(row: Any, runtime: dict[str, Any] | None = None) -> dict[str, Any]:
+        rt = runtime or {}
+        return {
+            "tunnel_id": row["tunnel_id"],
+            "protocol": row["protocol"],
+            "scope": row["scope"],
+            "peer_address": row["peer_address"],
+            "enabled": bool(row["enabled"]),
+            "online": bool(rt.get("agent_online", False)),
+            "active_streams": int(rt.get("streams_active", 0)),
+            "rx_bytes": int(rt.get("rx_bytes", 0)),
+            "tx_bytes": int(rt.get("tx_bytes", 0)),
+            "created_at": row["created_at"],
+            "expires_at": row["expires_at"],
+        }
+
+    @app.get("/health/live", operation_id="health_live")
+    async def health_live() -> dict[str, str]:
+        return {"status": "ok"}
+
+    @app.get("/health/ready", operation_id="health_ready")
+    async def health_ready(request: Request) -> Any:
+        try:
+            app.state.db.connect().execute("SELECT 1").fetchone()
+            broker_ok = await app.state.broker.health()
+        except (sqlite3.Error, BrokerError, BrokerUnavailable, OSError):
+            broker_ok = False
+        if not broker_ok:
+            return JSONResponse(
+                error_payload(request, "NOT_READY", "Broker IPC is unavailable."), status_code=503
+            )
+        return {"status": "ok", "broker": "ok", "database": "ok"}
+
+    @app.get("/v1/health", include_in_schema=False)
+    async def v1_health() -> dict[str, str]:
+        return {"status": "ok"}
+
+    @app.get("/v1/status", operation_id="get_public_status")
+    async def public_status() -> dict[str, Any]:
+        try:
+            result = await app.state.broker.call("get_status")
+            return {"status": "ok", **result.get("now", {})}
+        except (BrokerError, BrokerUnavailable):
+            raise APIError(503, "BROKER_UNAVAILABLE", "Broker runtime is unavailable.")
+
+    @app.post("/v1/tunnels", status_code=201, operation_id="create_tunnel")
+    async def create_tunnel(body: TunnelCreate, request: Request) -> dict[str, Any]:
+        ip = client_ip(request)
+        ensure_not_blocked(ip)
+        if not app.state.create_rate.allow(ip, settings.create_rate_per_minute):
+            raise APIError(429, "CREATE_RATE_LIMIT", "Tunnel creation rate exceeded.")
+        active = (
+            app.state.db.connect()
+            .execute(
+                "SELECT COUNT(*) FROM tunnels WHERE source_ip=? AND deleted=0 AND expires_at>?",
+                (ip, now_s()),
+            )
+            .fetchone()[0]
+        )
+        if active >= settings.max_tunnels_per_ip:
+            raise APIError(429, "TUNNEL_LIMIT", "Active tunnel limit exceeded.")
+        if body.scope == "open" and body.shared_token:
+            raise APIError(
+                422, "TOKEN_NOT_APPLICABLE", "shared_token is only valid for closed tunnels."
+            )
+        tunnel_id = public_id("tun_", 12)
+        management_secret = secrets.token_urlsafe(36)
+        try:
+            runtime = await app.state.broker.call(
+                "create_tunnel",
+                tunnel_id=tunnel_id,
+                proto=body.protocol,
+                closed=body.scope == "closed",
+                shared_token=body.shared_token or "",
+                prefer_port=body.prefer_port or 0,
+            )
+        except BrokerUnavailable:
+            raise APIError(503, "BROKER_UNAVAILABLE", "Broker runtime is unavailable.")
+        except BrokerError as exc:
+            raise APIError(503, "TUNNEL_CREATE_FAILED", str(exc))
+        port = int(runtime["public_port"])
+        scheme = body.protocol if body.scope == "open" else "tunnel"
+        if body.scope == "open":
+            peer_address = f"{scheme}://{settings.public_host}:{port}"
+        else:
+            peer_port = port if body.protocol == "udp" else settings.broker_control_port
+            peer_address = f"tunnel://{settings.public_host}:{peer_port}/{tunnel_id}"
+        created = now_s()
+        expires = created + settings.lease_seconds
+        try:
+            app.state.db.connect().execute(
+                """INSERT INTO tunnels(tunnel_id,protocol,scope,public_port,peer_address,
+                   agent_secret_hmac,shared_token_hmac,management_hmac,source_ip,
+                   created_at,updated_at,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    tunnel_id,
+                    body.protocol,
+                    body.scope,
+                    port,
+                    peer_address,
+                    runtime["agent_secret_hmac"],
+                    runtime.get("shared_token_hmac", ""),
+                    capability_hmac(settings.secret_key, management_secret),
+                    ip,
+                    created,
+                    created,
+                    expires,
+                ),
+            )
+        except Exception:
+            try:
+                await app.state.broker.call("delete_tunnel", tunnel_id=tunnel_id)
+            except (BrokerError, BrokerUnavailable):
+                ...
+            raise
+        response = {
+            "tunnel_id": tunnel_id,
+            "protocol": body.protocol,
+            "scope": body.scope,
+            "peer_address": peer_address,
+            "public_port": port,
+            "broker_control_port": settings.broker_control_port,
+            "agent_secret": runtime["agent_secret"],
+            "management_secret": management_secret,
+            "expires_at": expires,
+        }
+        if body.scope == "closed":
+            response["shared_token"] = runtime["shared_token"]
+        return response
+
+    @app.get("/v1/tunnels/{tunnel_id}", operation_id="get_tunnel")
+    async def get_tunnel(
+        tunnel_id: str, x_tunnel_management_secret: str | None = Header(None)
+    ) -> dict[str, Any]:
+        row = tunnel_for_owner(tunnel_id, x_tunnel_management_secret)
+        runtimes, _ = await runtime_map()
+        return tunnel_public(row, runtimes.get(tunnel_id))
+
+    @app.patch("/v1/tunnels/{tunnel_id}", operation_id="update_tunnel")
+    async def update_tunnel(
+        tunnel_id: str,
+        body: TunnelPatch,
+        x_tunnel_management_secret: str | None = Header(None),
+    ) -> dict[str, Any]:
+        row = tunnel_for_owner(tunnel_id, x_tunnel_management_secret)
+        if bool(row["enabled"]) != body.enabled:
+            try:
+                await app.state.broker.call(
+                    "enable_tunnel" if body.enabled else "disable_tunnel", tunnel_id=tunnel_id
+                )
+            except (BrokerError, BrokerUnavailable) as exc:
+                raise APIError(503, "BROKER_OPERATION_FAILED", str(exc))
+            app.state.db.connect().execute(
+                "UPDATE tunnels SET enabled=?,updated_at=? WHERE tunnel_id=?",
+                (int(body.enabled), now_s(), tunnel_id),
+            )
+        updated = (
+            app.state.db.connect()
+            .execute("SELECT * FROM tunnels WHERE tunnel_id=?", (tunnel_id,))
+            .fetchone()
+        )
+        return tunnel_public(updated)
+
+    @app.delete("/v1/tunnels/{tunnel_id}", operation_id="delete_tunnel")
+    async def delete_tunnel(
+        tunnel_id: str, x_tunnel_management_secret: str | None = Header(None)
+    ) -> dict[str, Any]:
+        tunnel_for_owner(tunnel_id, x_tunnel_management_secret)
+        try:
+            await app.state.broker.call("delete_tunnel", tunnel_id=tunnel_id)
+        except BrokerUnavailable:
+            raise APIError(503, "BROKER_UNAVAILABLE", "Broker runtime is unavailable.")
+        except BrokerError as exc:
+            if "not found" not in str(exc):
+                raise APIError(503, "BROKER_OPERATION_FAILED", str(exc))
+        app.state.db.connect().execute(
+            "UPDATE tunnels SET deleted=1,enabled=0,updated_at=? WHERE tunnel_id=?",
+            (now_s(), tunnel_id),
+        )
+        app.state.db.connect().execute(
+            "UPDATE announcements SET enabled=0,updated_at=? WHERE tunnel_id=?",
+            (now_s(), tunnel_id),
+        )
+        return {"status": "deleted", "tunnel_id": tunnel_id}
+
+    @app.post("/v1/tunnels/{tunnel_id}/renew", operation_id="renew_tunnel")
+    async def renew_tunnel(
+        tunnel_id: str, x_tunnel_management_secret: str | None = Header(None)
+    ) -> dict[str, Any]:
+        tunnel_for_owner(tunnel_id, x_tunnel_management_secret)
+        expires = now_s() + settings.lease_seconds
+        app.state.db.connect().execute(
+            "UPDATE tunnels SET expires_at=?,updated_at=? WHERE tunnel_id=?",
+            (expires, now_s(), tunnel_id),
+        )
+        app.state.db.connect().execute(
+            "UPDATE announcements SET expires_at=?,updated_at=? WHERE tunnel_id=?",
+            (expires, now_s(), tunnel_id),
+        )
+        return {"tunnel_id": tunnel_id, "expires_at": expires}
+
+    @app.post("/v1/tunnels/{tunnel_id}/rotate-agent-secret", operation_id="rotate_agent_secret")
+    async def rotate_agent_secret(
+        tunnel_id: str, x_tunnel_management_secret: str | None = Header(None)
+    ) -> dict[str, Any]:
+        tunnel_for_owner(tunnel_id, x_tunnel_management_secret)
+        try:
+            result = await app.state.broker.call("rotate_agent_secret", tunnel_id=tunnel_id)
+        except (BrokerError, BrokerUnavailable) as exc:
+            raise APIError(503, "BROKER_OPERATION_FAILED", str(exc))
+        app.state.db.connect().execute(
+            "UPDATE tunnels SET agent_secret_hmac=?,updated_at=? WHERE tunnel_id=?",
+            (result["secret_hmac"], now_s(), tunnel_id),
+        )
+        return {"tunnel_id": tunnel_id, "agent_secret": result["secret"]}
+
+    @app.post("/v1/tunnels/{tunnel_id}/rotate-token", operation_id="rotate_shared_token")
+    async def rotate_token(
+        tunnel_id: str, x_tunnel_management_secret: str | None = Header(None)
+    ) -> dict[str, Any]:
+        row = tunnel_for_owner(tunnel_id, x_tunnel_management_secret)
+        if row["scope"] != "closed":
+            raise APIError(409, "TUNNEL_NOT_CLOSED", "Only closed tunnels have shared tokens.")
+        try:
+            result = await app.state.broker.call("rotate_shared_token", tunnel_id=tunnel_id)
+        except (BrokerError, BrokerUnavailable) as exc:
+            raise APIError(503, "BROKER_OPERATION_FAILED", str(exc))
+        app.state.db.connect().execute(
+            "UPDATE tunnels SET shared_token_hmac=?,updated_at=? WHERE tunnel_id=?",
+            (result["secret_hmac"], now_s(), tunnel_id),
+        )
+        return {"tunnel_id": tunnel_id, "shared_token": result["secret"]}
+
+    def announcement_public(row: Any, online: bool = False) -> dict[str, Any]:
+        return {
+            "announcement_id": row["announcement_id"],
+            "tunnel_id": row["tunnel_id"],
+            "peer_address": row["peer_address"],
+            "protocol": row["protocol"],
+            "scope": row["scope"],
+            "service_name": row["service_name"],
+            "service_id": row["service_id"],
+            "llms": row["llms"],
+            "attributes": json.loads(row["attributes_json"]),
+            "online": online,
+            "enabled": bool(row["enabled"]),
+            "verified": bool(row["verified"]),
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+            "expires_at": row["expires_at"],
+        }
+
+    @app.post("/v1/announce", status_code=201, operation_id="create_announcement")
+    async def create_announcement(
+        body: AnnouncementCreate,
+        x_tunnel_management_secret: str | None = Header(None),
+    ) -> dict[str, Any]:
+        row = tunnel_for_owner(body.tunnel_id, x_tunnel_management_secret)
+        try:
+            validate_attributes(
+                body.attributes,
+                settings.max_attribute_depth,
+                settings.max_attribute_keys,
+                settings.max_announcement_bytes,
+            )
+        except ValueError as exc:
+            raise APIError(422, "INVALID_ATTRIBUTES", str(exc))
+        ann_id = public_id("ann_", 12)
+        created = now_s()
+        app.state.db.connect().execute(
+            """INSERT INTO announcements(announcement_id,tunnel_id,protocol,scope,
+               peer_address,service_name,service_id,llms,attributes_json,created_at,
+               updated_at,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (
+                ann_id,
+                row["tunnel_id"],
+                row["protocol"],
+                row["scope"],
+                row["peer_address"],
+                body.service_name,
+                body.service_id,
+                body.llms,
+                json.dumps(body.attributes, separators=(",", ":"), ensure_ascii=False),
+                created,
+                created,
+                row["expires_at"],
+            ),
+        )
+        ann = (
+            app.state.db.connect()
+            .execute("SELECT * FROM announcements WHERE announcement_id=?", (ann_id,))
+            .fetchone()
+        )
+        return announcement_public(ann)
+
+    async def search_announcements(request: Request) -> list[dict[str, Any]]:
+        clauses = ["a.enabled=1", "a.expires_at>?", "t.deleted=0", "t.enabled=1"]
+        args: list[Any] = [now_s()]
+        q = request.query_params
+        service = q.get("service") or q.get("q")
+        if service:
+            clauses.append("(a.service_name LIKE ? OR a.service_id LIKE ?)")
+            args.extend([f"%{service}%", f"%{service}%"])
+        for key in ("service_id", "scope", "protocol", "tunnel_id"):
+            if q.get(key):
+                clauses.append(f"a.{key}=?")
+                args.append(q[key])
+        rows = (
+            app.state.db.connect()
+            .execute(
+                "SELECT a.* FROM announcements a JOIN tunnels t ON t.tunnel_id=a.tunnel_id WHERE "
+                + " AND ".join(clauses)
+                + " ORDER BY a.updated_at DESC LIMIT 200",
+                args,
+            )
+            .fetchall()
+        )
+        attr_filters = {k[10:]: v for k, v in q.multi_items() if k.startswith("attribute.")}
+        runtimes, _ = await runtime_map()
+        output = []
+        for row in rows:
+            attrs = json.loads(row["attributes_json"])
+            if any(str(attrs.get(key)) != value for key, value in attr_filters.items()):
+                continue
+            output.append(
+                announcement_public(
+                    row, bool(runtimes.get(row["tunnel_id"], {}).get("agent_online"))
+                )
+            )
+        return output
+
+    @app.get("/v1/announce/search", operation_id="search_announcements")
+    async def announcement_search(request: Request) -> dict[str, Any]:
+        items = await search_announcements(request)
+        return {"items": items, "count": len(items)}
+
+    @app.get("/v1/announce", operation_id="list_announcements")
+    async def list_announcements(request: Request) -> dict[str, Any]:
+        items = await search_announcements(request)
+        return {"items": items, "count": len(items)}
+
+    @app.get("/v1/announce/{announcement_id}", operation_id="get_announcement")
+    async def get_announcement(announcement_id: str) -> dict[str, Any]:
+        row = (
+            app.state.db.connect()
+            .execute(
+                "SELECT * FROM announcements WHERE announcement_id=? AND enabled=1 AND expires_at>?",
+                (announcement_id, now_s()),
+            )
+            .fetchone()
+        )
+        if not row:
+            raise APIError(404, "ANNOUNCEMENT_NOT_FOUND", "Announcement was not found.")
+        runtimes, _ = await runtime_map()
+        return announcement_public(
+            row, bool(runtimes.get(row["tunnel_id"], {}).get("agent_online"))
+        )
+
+    def announcement_for_owner(announcement_id: str, secret: str | None) -> Any:
+        row = (
+            app.state.db.connect()
+            .execute(
+                """SELECT a.*,t.management_hmac,t.deleted FROM announcements a
+               JOIN tunnels t ON t.tunnel_id=a.tunnel_id WHERE a.announcement_id=?""",
+                (announcement_id,),
+            )
+            .fetchone()
+        )
+        if (
+            not row
+            or row["deleted"]
+            or not secret
+            or not verify_capability(settings.secret_key, secret, row["management_hmac"])
+        ):
+            raise APIError(404, "ANNOUNCEMENT_NOT_FOUND", "Announcement was not found.")
+        return row
+
+    @app.patch("/v1/announce/{announcement_id}", operation_id="update_announcement")
+    async def update_announcement(
+        announcement_id: str,
+        body: AnnouncementPatch,
+        x_tunnel_management_secret: str | None = Header(None),
+    ) -> dict[str, Any]:
+        announcement_for_owner(announcement_id, x_tunnel_management_secret)
+        changes = body.model_dump(exclude_none=True)
+        if "attributes" in changes:
+            try:
+                validate_attributes(
+                    changes["attributes"],
+                    settings.max_attribute_depth,
+                    settings.max_attribute_keys,
+                    settings.max_announcement_bytes,
+                )
+            except ValueError as exc:
+                raise APIError(422, "INVALID_ATTRIBUTES", str(exc))
+            changes["attributes_json"] = json.dumps(
+                changes.pop("attributes"), separators=(",", ":"), ensure_ascii=False
+            )
+        allowed = {"service_name", "service_id", "llms", "attributes_json", "enabled"}
+        changes = {k: int(v) if k == "enabled" else v for k, v in changes.items() if k in allowed}
+        if changes:
+            changes["updated_at"] = now_s()
+            sql = (
+                "UPDATE announcements SET "
+                + ",".join(f"{k}=?" for k in changes)
+                + " WHERE announcement_id=?"
+            )
+            app.state.db.connect().execute(sql, [*changes.values(), announcement_id])
+        updated = (
+            app.state.db.connect()
+            .execute("SELECT * FROM announcements WHERE announcement_id=?", (announcement_id,))
+            .fetchone()
+        )
+        return announcement_public(updated)
+
+    @app.delete("/v1/announce/{announcement_id}", operation_id="delete_announcement")
+    async def delete_announcement(
+        announcement_id: str,
+        x_tunnel_management_secret: str | None = Header(None),
+    ) -> dict[str, str]:
+        announcement_for_owner(announcement_id, x_tunnel_management_secret)
+        app.state.db.connect().execute(
+            "UPDATE announcements SET enabled=0,updated_at=? WHERE announcement_id=?",
+            (now_s(), announcement_id),
+        )
+        return {"status": "deleted", "announcement_id": announcement_id}
+
+    def admin_session(request: Request) -> Any | None:
+        token = request.cookies.get("tm_admin")
+        if not token:
+            return None
+        digest = capability_hmac(settings.secret_key, token)
+        return (
+            app.state.db.connect()
+            .execute(
+                """SELECT s.*,u.username FROM admin_sessions s JOIN admin_users u ON u.user_id=s.user_id
+               WHERE s.token_hmac=? AND s.expires_at>?""",
+                (digest, now_s()),
+            )
+            .fetchone()
+        )
+
+    def require_admin(request: Request) -> Any:
+        session = admin_session(request)
+        if not session:
+            raise APIError(401, "ADMIN_AUTH_REQUIRED", "Administrator authentication required.")
+        return session
+
+    def require_csrf(request: Request, session: Any, supplied: str | None) -> None:
+        if not supplied or not secrets.compare_digest(supplied, session["csrf_token"]):
+            raise APIError(403, "CSRF_REJECTED", "CSRF validation failed.")
+
+    @app.post("/v1/admin/login", operation_id="admin_login")
+    async def admin_login(request: Request) -> JSONResponse:
+        ip = client_ip(request)
+        if not app.state.login_rate.allow(ip, 8, 300):
+            raise APIError(429, "LOGIN_RATE_LIMIT", "Too many login attempts.")
+        try:
+            body = await request.json()
+            username, password = str(body["username"]), str(body["password"])
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+            raise APIError(400, "INVALID_LOGIN", "Username and password are required.")
+        user = (
+            app.state.db.connect()
+            .execute("SELECT * FROM admin_users WHERE username=?", (username,))
+            .fetchone()
+        )
+        if not user or not verify_password(password, user["password_hash"]):
+            audit(app.state.db, "login_failed", username, remote_ip=ip)
+            raise APIError(401, "INVALID_LOGIN", "Invalid username or password.")
+        token, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(24)
+        expires = now_s() + 12 * 3600
+        app.state.db.connect().execute(
+            "INSERT INTO admin_sessions(token_hmac,user_id,csrf_token,created_at,expires_at) VALUES(?,?,?,?,?)",
+            (capability_hmac(settings.secret_key, token), user["user_id"], csrf, now_s(), expires),
+        )
+        audit(app.state.db, "login", username, remote_ip=ip)
+        response = JSONResponse({"status": "ok", "csrf_token": csrf, "expires_at": expires})
+        response.set_cookie(
+            "tm_admin",
+            token,
+            httponly=True,
+            secure=settings.secure_cookies,
+            samesite="strict",
+            max_age=12 * 3600,
+            path="/",
+        )
+        return response
+
+    @app.post("/v1/admin/logout", operation_id="admin_logout")
+    async def admin_logout(
+        request: Request, x_csrf_token: str | None = Header(None)
+    ) -> JSONResponse:
+        session = require_admin(request)
+        require_csrf(request, session, x_csrf_token)
+        app.state.db.connect().execute(
+            "DELETE FROM admin_sessions WHERE token_hmac=?", (session["token_hmac"],)
+        )
+        audit(app.state.db, "logout", session["username"], remote_ip=client_ip(request))
+        response = JSONResponse({"status": "ok"})
+        response.delete_cookie("tm_admin", path="/")
+        return response
+
+    @app.get("/v1/admin/tunnels", operation_id="admin_list_tunnels")
+    async def admin_tunnels(request: Request, q: str | None = None) -> dict[str, Any]:
+        require_admin(request)
+        rows = (
+            app.state.db.connect()
+            .execute(
+                """SELECT * FROM tunnels WHERE deleted=0 AND
+               (? IS NULL OR tunnel_id LIKE ? OR peer_address LIKE ?) ORDER BY created_at DESC LIMIT 500""",
+                (q, f"%{q}%" if q else None, f"%{q}%" if q else None),
+            )
+            .fetchall()
+        )
+        runtimes, status = await runtime_map()
+        return {
+            "items": [tunnel_public(r, runtimes.get(r["tunnel_id"])) for r in rows],
+            "broker": status,
+        }
+
+    @app.get("/v1/admin/topology", operation_id="admin_topology")
+    async def admin_topology(request: Request) -> dict[str, Any]:
+        require_admin(request)
+        runtimes, status = await runtime_map()
+        anns = (
+            app.state.db.connect()
+            .execute(
+                "SELECT tunnel_id,announcement_id,service_name FROM announcements WHERE enabled=1"
+            )
+            .fetchall()
+        )
+        by_tunnel: dict[str, list[dict[str, str]]] = defaultdict(list)
+        for ann in anns:
+            by_tunnel[ann["tunnel_id"]].append(
+                {"id": ann["announcement_id"], "service_name": ann["service_name"]}
+            )
+        return {
+            "broker": status,
+            "tunnels": [
+                {**runtime, "announcements": by_tunnel.get(tid, [])}
+                for tid, runtime in runtimes.items()
+            ],
+        }
+
+    @app.patch("/v1/admin/tunnels/{tunnel_id}", operation_id="admin_update_tunnel")
+    async def admin_update_tunnel(
+        tunnel_id: str,
+        body: TunnelPatch,
+        request: Request,
+        x_csrf_token: str | None = Header(None),
+    ) -> dict[str, Any]:
+        session = require_admin(request)
+        require_csrf(request, session, x_csrf_token)
+        row = (
+            app.state.db.connect()
+            .execute("SELECT * FROM tunnels WHERE tunnel_id=? AND deleted=0", (tunnel_id,))
+            .fetchone()
+        )
+        if not row:
+            raise APIError(404, "TUNNEL_NOT_FOUND", "Tunnel was not found.")
+        if bool(row["enabled"]) != body.enabled:
+            try:
+                await app.state.broker.call(
+                    "enable_tunnel" if body.enabled else "disable_tunnel",
+                    tunnel_id=tunnel_id,
+                )
+            except (BrokerError, BrokerUnavailable) as exc:
+                raise APIError(503, "BROKER_OPERATION_FAILED", str(exc)) from exc
+            app.state.db.connect().execute(
+                "UPDATE tunnels SET enabled=?,updated_at=? WHERE tunnel_id=?",
+                (int(body.enabled), now_s(), tunnel_id),
+            )
+        audit(
+            app.state.db,
+            "enable_tunnel" if body.enabled else "disable_tunnel",
+            session["username"],
+            tunnel_id,
+            client_ip(request),
+        )
+        updated = (
+            app.state.db.connect()
+            .execute("SELECT * FROM tunnels WHERE tunnel_id=?", (tunnel_id,))
+            .fetchone()
+        )
+        return tunnel_public(updated)
+
+    @app.post(
+        "/v1/admin/tunnels/{tunnel_id}/streams/{stream_id}/kill",
+        operation_id="admin_kill_stream",
+    )
+    async def admin_kill_stream(
+        tunnel_id: str,
+        stream_id: int,
+        request: Request,
+        x_csrf_token: str | None = Header(None),
+    ) -> dict[str, Any]:
+        session = require_admin(request)
+        require_csrf(request, session, x_csrf_token)
+        try:
+            await app.state.broker.call("kill_stream", tunnel_id=tunnel_id, stream_id=stream_id)
+        except (BrokerError, BrokerUnavailable) as exc:
+            raise APIError(404, "STREAM_NOT_FOUND", "Stream was not found.") from exc
+        audit(
+            app.state.db,
+            "kill_stream",
+            session["username"],
+            f"{tunnel_id}:{stream_id}",
+            client_ip(request),
+        )
+        return {"status": "killed", "tunnel_id": tunnel_id, "stream_id": stream_id}
+
+    @app.get("/v1/admin/announcements", operation_id="admin_list_announcements")
+    async def admin_list_announcements(request: Request, q: str | None = None) -> dict[str, Any]:
+        require_admin(request)
+        needle = f"%{q}%" if q else None
+        rows = (
+            app.state.db.connect()
+            .execute(
+                """SELECT * FROM announcements WHERE
+               (? IS NULL OR service_name LIKE ? OR service_id LIKE ? OR tunnel_id LIKE ?
+                OR peer_address LIKE ? OR attributes_json LIKE ?)
+               ORDER BY updated_at DESC LIMIT 500""",
+                (q, needle, needle, needle, needle, needle),
+            )
+            .fetchall()
+        )
+        runtimes, _ = await runtime_map()
+        return {
+            "items": [
+                announcement_public(
+                    row, bool(runtimes.get(row["tunnel_id"], {}).get("agent_online"))
+                )
+                for row in rows
+            ]
+        }
+
+    @app.patch(
+        "/v1/admin/announcements/{announcement_id}",
+        operation_id="admin_update_announcement",
+    )
+    async def admin_update_announcement(
+        announcement_id: str,
+        body: AdminAnnouncementPatch,
+        request: Request,
+        x_csrf_token: str | None = Header(None),
+    ) -> dict[str, Any]:
+        session = require_admin(request)
+        require_csrf(request, session, x_csrf_token)
+        row = (
+            app.state.db.connect()
+            .execute("SELECT * FROM announcements WHERE announcement_id=?", (announcement_id,))
+            .fetchone()
+        )
+        if not row:
+            raise APIError(404, "ANNOUNCEMENT_NOT_FOUND", "Announcement was not found.")
+        changes = body.model_dump(exclude_none=True)
+        if "attributes" in changes:
+            try:
+                validate_attributes(
+                    changes["attributes"],
+                    settings.max_attribute_depth,
+                    settings.max_attribute_keys,
+                    settings.max_announcement_bytes,
+                )
+            except ValueError as exc:
+                raise APIError(422, "INVALID_ATTRIBUTES", str(exc)) from exc
+            changes["attributes_json"] = json.dumps(
+                changes.pop("attributes"), separators=(",", ":"), ensure_ascii=False
+            )
+        if changes:
+            changes = {
+                key: int(value) if key in {"enabled", "verified"} else value
+                for key, value in changes.items()
+            }
+            changes["updated_at"] = now_s()
+            app.state.db.connect().execute(
+                "UPDATE announcements SET "
+                + ",".join(f"{key}=?" for key in changes)
+                + " WHERE announcement_id=?",
+                [*changes.values(), announcement_id],
+            )
+        audit(
+            app.state.db,
+            "edit_announcement",
+            session["username"],
+            announcement_id,
+            client_ip(request),
+        )
+        updated = (
+            app.state.db.connect()
+            .execute("SELECT * FROM announcements WHERE announcement_id=?", (announcement_id,))
+            .fetchone()
+        )
+        return announcement_public(updated)
+
+    @app.delete(
+        "/v1/admin/announcements/{announcement_id}",
+        operation_id="admin_delete_announcement",
+    )
+    async def admin_delete_announcement(
+        announcement_id: str,
+        request: Request,
+        x_csrf_token: str | None = Header(None),
+    ) -> dict[str, str]:
+        session = require_admin(request)
+        require_csrf(request, session, x_csrf_token)
+        result = app.state.db.connect().execute(
+            "DELETE FROM announcements WHERE announcement_id=?", (announcement_id,)
+        )
+        if result.rowcount == 0:
+            raise APIError(404, "ANNOUNCEMENT_NOT_FOUND", "Announcement was not found.")
+        audit(
+            app.state.db,
+            "delete_announcement",
+            session["username"],
+            announcement_id,
+            client_ip(request),
+        )
+        return {"status": "deleted", "announcement_id": announcement_id}
+
+    @app.get("/v1/admin/blocked-ips", operation_id="admin_list_blocked_ips")
+    async def admin_list_blocked_ips(request: Request) -> dict[str, Any]:
+        require_admin(request)
+        rows = (
+            app.state.db.connect()
+            .execute("SELECT * FROM blocked_ips ORDER BY created_at DESC")
+            .fetchall()
+        )
+        return {"items": [dict(row) for row in rows]}
+
+    @app.post("/v1/admin/blocked-ips", operation_id="admin_block_ip")
+    async def admin_block_ip(
+        body: BlockIPCreate,
+        request: Request,
+        x_csrf_token: str | None = Header(None),
+    ) -> dict[str, Any]:
+        session = require_admin(request)
+        require_csrf(request, session, x_csrf_token)
+        app.state.db.connect().execute(
+            "INSERT OR REPLACE INTO blocked_ips(cidr,reason,created_at) VALUES(?,?,?)",
+            (body.cidr, body.reason, now_s()),
+        )
+        audit(app.state.db, "block_ip", session["username"], body.cidr, client_ip(request))
+        return {"status": "blocked", "cidr": body.cidr}
+
+    @app.delete("/v1/admin/blocked-ips/{cidr:path}", operation_id="admin_unblock_ip")
+    async def admin_unblock_ip(
+        cidr: str,
+        request: Request,
+        x_csrf_token: str | None = Header(None),
+    ) -> dict[str, Any]:
+        session = require_admin(request)
+        require_csrf(request, session, x_csrf_token)
+        try:
+            normalized = str(ipaddress.ip_network(cidr, strict=False))
+        except ValueError as exc:
+            raise APIError(422, "INVALID_CIDR", "CIDR is invalid.") from exc
+        app.state.db.connect().execute("DELETE FROM blocked_ips WHERE cidr=?", (normalized,))
+        audit(app.state.db, "unblock_ip", session["username"], normalized, client_ip(request))
+        return {"status": "unblocked", "cidr": normalized}
+
+    @app.delete("/v1/admin/tunnels/{tunnel_id}", operation_id="admin_delete_tunnel")
+    async def admin_delete_tunnel(
+        tunnel_id: str, request: Request, x_csrf_token: str | None = Header(None)
+    ) -> dict[str, str]:
+        session = require_admin(request)
+        require_csrf(request, session, x_csrf_token)
+        row = (
+            app.state.db.connect()
+            .execute("SELECT * FROM tunnels WHERE tunnel_id=? AND deleted=0", (tunnel_id,))
+            .fetchone()
+        )
+        if not row:
+            raise APIError(404, "TUNNEL_NOT_FOUND", "Tunnel was not found.")
+        try:
+            await app.state.broker.call("delete_tunnel", tunnel_id=tunnel_id)
+        except BrokerError as exc:
+            if "not found" not in str(exc):
+                raise APIError(503, "BROKER_OPERATION_FAILED", str(exc))
+        except BrokerUnavailable:
+            raise APIError(503, "BROKER_UNAVAILABLE", "Broker runtime is unavailable.")
+        app.state.db.connect().execute(
+            "UPDATE tunnels SET deleted=1,enabled=0,updated_at=? WHERE tunnel_id=?",
+            (now_s(), tunnel_id),
+        )
+        app.state.db.connect().execute(
+            "UPDATE announcements SET enabled=0,updated_at=? WHERE tunnel_id=?",
+            (now_s(), tunnel_id),
+        )
+        audit(app.state.db, "delete_tunnel", session["username"], tunnel_id, client_ip(request))
+        return {"status": "deleted", "tunnel_id": tunnel_id}
+
+    @app.get("/llms.txt", response_class=PlainTextResponse, operation_id="llms_txt")
+    async def llms_txt() -> PlainTextResponse:
+        text = f"""# TunnelMate
+
+TunnelMate exposes TCP and UDP services behind NAT through an outbound encrypted agent connection.
+Open tunnels have a public tcp:// or udp:// address. Closed tunnels require tunnelmate-peer and a tunnel-scoped shared token.
+Create tunnels anonymously at POST /v1/tunnels; no account or global API key is required.
+Tunnel ownership uses a one-time management_secret capability returned at creation.
+Search the public service registry at GET /v1/announce/search.
+OpenAPI: /openapi.json
+Interactive API docs: /docs and /redoc
+Python SDK package: tunnelmate
+Agent transport control port: {settings.broker_control_port}
+Limitations: v1 forwards TCP byte streams and UDP datagrams; interrupted TCP sessions cannot resume; UDP source addresses are represented by agent-side flow mappings.
+"""
+        return PlainTextResponse(text, media_type="text/plain; charset=utf-8")
+
+    @app.get("/admin/login", response_class=HTMLResponse, include_in_schema=False)
+    async def admin_login_page(request: Request) -> Any:
+        if admin_session(request):
+            return RedirectResponse("/admin", status_code=303)
+        return app.state.templates.TemplateResponse(request, "login.html", {})
+
+    @app.post("/admin/login", include_in_schema=False)
+    async def admin_login_form(request: Request) -> Any:
+        raw = (await request.body()).decode("utf-8", "replace")
+        form = parse_qs(raw)
+        username = form.get("username", [""])[0]
+        password = form.get("password", [""])[0]
+        ip = client_ip(request)
+        if not app.state.login_rate.allow(ip, 8, 300):
+            return app.state.templates.TemplateResponse(
+                request, "login.html", {"error": "Too many attempts."}, status_code=429
+            )
+        user = (
+            app.state.db.connect()
+            .execute("SELECT * FROM admin_users WHERE username=?", (username,))
+            .fetchone()
+        )
+        if not user or not verify_password(password, user["password_hash"]):
+            audit(app.state.db, "login_failed", username, remote_ip=ip)
+            return app.state.templates.TemplateResponse(
+                request, "login.html", {"error": "Invalid username or password."}, status_code=401
+            )
+        token, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(24)
+        app.state.db.connect().execute(
+            "INSERT INTO admin_sessions(token_hmac,user_id,csrf_token,created_at,expires_at) VALUES(?,?,?,?,?)",
+            (
+                capability_hmac(settings.secret_key, token),
+                user["user_id"],
+                csrf,
+                now_s(),
+                now_s() + 43200,
+            ),
+        )
+        audit(app.state.db, "login", username, remote_ip=ip)
+        response = RedirectResponse("/admin", status_code=303)
+        response.set_cookie(
+            "tm_admin",
+            token,
+            httponly=True,
+            secure=settings.secure_cookies,
+            samesite="strict",
+            max_age=43200,
+            path="/",
+        )
+        return response
+
+    @app.get("/admin", response_class=HTMLResponse, include_in_schema=False)
+    @app.get("/admin/tunnels", response_class=HTMLResponse, include_in_schema=False)
+    async def admin_page(request: Request) -> Any:
+        session = admin_session(request)
+        if not session:
+            return RedirectResponse("/admin/login", status_code=303)
+        rows = (
+            app.state.db.connect()
+            .execute("SELECT * FROM tunnels WHERE deleted=0 ORDER BY created_at DESC LIMIT 500")
+            .fetchall()
+        )
+        ann_rows = (
+            app.state.db.connect()
+            .execute("SELECT * FROM announcements ORDER BY updated_at DESC LIMIT 500")
+            .fetchall()
+        )
+        runtimes, status = await runtime_map()
+        tunnels = [tunnel_public(row, runtimes.get(row["tunnel_id"])) for row in rows]
+        return app.state.templates.TemplateResponse(
+            request,
+            "admin.html",
+            {
+                "session": session,
+                "csrf": session["csrf_token"],
+                "tunnels": tunnels,
+                "announcements": [announcement_public(row) for row in ann_rows],
+                "broker": status,
+            },
+        )
+
+    return app
+
+
+app = create_app()
+
+
+def run() -> None:
+    uvicorn.run(
+        "tunnelmate_api.main:app",
+        host=os.getenv("TUNNELMATE_API_HOST", "127.0.0.1"),
+        port=int(os.getenv("TUNNELMATE_API_PORT", "8000")),
+        proxy_headers=False,
+        server_header=False,
+    )

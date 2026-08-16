@@ -4,6 +4,7 @@
 
 #include <openssl/err.h>
 #include <openssl/rand.h>
+#include <arpa/inet.h>
 #include <errno.h>
 
 /* ------------------------------------------------------------------ */
@@ -29,7 +30,7 @@ static int load_cert(SSL_CTX *ctx, const char *cert, const char *key,
 
 static void ctx_base(SSL_CTX *ctx, bool is_dtls) {
     SSL_CTX_set_options(ctx, SSL_OP_NO_COMPRESSION | SSL_OP_CIPHER_SERVER_PREFERENCE);
-    SSL_CTX_set_mode(ctx, SSL_MODE_ENABLE_PARTIAL_WRITE | SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
+    SSL_CTX_set_mode(ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
     if (is_dtls) {
         SSL_CTX_set_min_proto_version(ctx, DTLS1_2_VERSION);
         SSL_CTX_set_max_proto_version(ctx, DTLS1_2_VERSION);
@@ -105,6 +106,50 @@ SSL_CTX *tm_dtls_client_ctx(const char *ca_path, bool verify,
     return ctx;
 }
 
+tm_status tm_tls_configure_client_ssl(SSL *ssl, const char *hostname,
+                                      bool verify) {
+    if (!ssl || !hostname || !hostname[0]) return TM_ERR;
+    unsigned char ipbuf[sizeof(struct in6_addr)];
+    bool is_ip = inet_pton(AF_INET, hostname, ipbuf) == 1 ||
+                 inet_pton(AF_INET6, hostname, ipbuf) == 1;
+    if (!is_ip && SSL_set_tlsext_host_name(ssl, hostname) != 1) return TM_ERR_TLS;
+    if (!verify) return TM_OK;
+    X509_VERIFY_PARAM *param = SSL_get0_param(ssl);
+    if (!param) return TM_ERR_TLS;
+    if (is_ip) {
+        if (X509_VERIFY_PARAM_set1_ip_asc(param, hostname) != 1) return TM_ERR_TLS;
+    } else if (SSL_set1_host(ssl, hostname) != 1) {
+        return TM_ERR_TLS;
+    }
+    return TM_OK;
+}
+
+tm_status tm_dtls_attach_bio_pair(SSL *ssl, BIO **rbio, BIO **wbio) {
+    BIO *ssl_bio = NULL, *network_bio = NULL;
+    if (!ssl || !rbio || !wbio) return TM_ERR;
+    if (BIO_new_bio_dgram_pair(&ssl_bio, 0, &network_bio, 0) != 1)
+        return TM_ERR_TLS;
+    SSL_set0_rbio(ssl, ssl_bio);
+    if (BIO_up_ref(ssl_bio) != 1) {
+        BIO_free(network_bio);
+        return TM_ERR_TLS;
+    }
+    SSL_set0_wbio(ssl, ssl_bio);
+    /* A memory-backed datagram BIO has no socket from which libssl can query
+       the path MTU.  Without an explicit MTU OpenSSL aborts the first DTLS
+       flight with SSL_ERROR_SYSCALL before placing a useful error on the
+       queue. */
+    SSL_set_options(ssl, SSL_OP_NO_QUERY_MTU);
+    if (DTLS_set_link_mtu(ssl, 1400) == 0) {
+        BIO_free(network_bio);
+        return TM_ERR_TLS;
+    }
+    *rbio = network_bio;
+    if (BIO_up_ref(network_bio) != 1) return TM_ERR_TLS;
+    *wbio = network_bio;
+    return TM_OK;
+}
+
 SSL *tm_ssl_new(SSL_CTX *ctx, bool is_dtls) {
     (void)is_dtls;
     SSL *ssl = SSL_new(ctx);
@@ -149,9 +194,13 @@ struct tm_ssl_stream {
     bool inflight;
     uint8_t *pq;
     size_t pq_len, pq_cap, pq_off;
+    size_t ssl_retry_len;
     uint8_t inbuf[TM_SSL_INBUF_SIZE];
     int last_err;
     bool above_low;
+    bool pumping_read;
+    bool free_pending;
+    bool freeing;
     tm_ssl_low_cb low_cb;
     void *low_arg;
 };
@@ -172,19 +221,30 @@ static void finish_close(tm_ssl_stream *s) {
     }
 }
 
-static void do_free(tm_ssl_stream *s) {
-    if (s->dtls_timer.data) {
-        uv_timer_stop(&s->dtls_timer);
-        uv_close((uv_handle_t *)&s->dtls_timer, NULL);
-        s->dtls_timer.data = NULL;
-    }
+static void free_stream_memory(tm_ssl_stream *s) {
     if (s->ssl) SSL_free(s->ssl);
-    /* rbio/wbio are owned by the SSL object (SSL_set_bio transfers
-       ownership); SSL_free above already releases them. */
+    if (s->is_dtls) {
+        BIO_free(s->rbio);
+        BIO_free(s->wbio);
+    }
     free(s->pq);
-    void *arg = s->cbs.arg;
     free(s);
-    (void)arg; /* arg is owned by the caller, not freed here */
+}
+
+static void dtls_timer_closed(uv_handle_t *h) {
+    free_stream_memory((tm_ssl_stream *)h->data);
+}
+
+static void do_free(tm_ssl_stream *s) {
+    if (s->freeing) return;
+    s->freeing = true;
+    if (s->is_dtls && s->dtls_timer.data &&
+        !uv_is_closing((uv_handle_t *)&s->dtls_timer)) {
+        uv_timer_stop(&s->dtls_timer);
+        uv_close((uv_handle_t *)&s->dtls_timer, dtls_timer_closed);
+        return;
+    }
+    free_stream_memory(s);
 }
 
 tm_ssl_stream *tm_ssl_stream_new(uv_loop_t *loop, uv_stream_t *socket,
@@ -216,10 +276,10 @@ tm_ssl_stream *tm_dtls_stream_new(uv_loop_t *loop, uv_udp_t *udp, SSL *ssl,
     s->is_dtls = true;
     s->is_server = is_server;
     s->state = TM_SS_STATE_HANDSHAKE;
-    s->rbio = BIO_new(BIO_s_mem());
-    s->wbio = BIO_new(BIO_s_mem());
-    if (!s->rbio || !s->wbio) { free(s); return NULL; }
-    SSL_set_bio(ssl, s->rbio, s->wbio);
+    if (tm_dtls_attach_bio_pair(ssl, &s->rbio, &s->wbio) != TM_OK) {
+        free(s);
+        return NULL;
+    }
     if (is_server) SSL_set_accept_state(ssl);
     else SSL_set_connect_state(ssl);
     uv_timer_init(loop, &s->dtls_timer);
@@ -258,7 +318,6 @@ static void pump_write(tm_ssl_stream *s) {
         uint8_t *chunk = tm_xmalloc(TM_SSL_WBUF_SIZE);
         int n = BIO_read(s->wbio, chunk, TM_SSL_WBUF_SIZE);
         if (n > 0) {
-            fprintf(stderr, "DBG tls_send %p %d\n", (void *)s, n);
             tm_wreq *wr = tm_xcalloc(1, sizeof(*wr));
             wr->data = chunk;
             wr->s = s;
@@ -292,14 +351,22 @@ static void pump_write(tm_ssl_stream *s) {
             }
             return;
         }
-        int w = SSL_write(s->ssl, s->pq + s->pq_off, (int)(s->pq_len - s->pq_off));
+        size_t available = s->pq_len - s->pq_off;
+        size_t write_len = s->ssl_retry_len ? s->ssl_retry_len
+                                             : (available < 16384u ? available : 16384u);
+        int w = SSL_write(s->ssl, s->pq + s->pq_off, (int)write_len);
         if (w > 0) {
+            s->ssl_retry_len = 0;
             s->pq_off += (size_t)w;
             if (s->pq_off == s->pq_len) { s->pq_len = 0; s->pq_off = 0; }
             continue;
         }
         int e = SSL_get_error(s->ssl, w);
         if (e == SSL_ERROR_WANT_WRITE || e == SSL_ERROR_WANT_READ) {
+            /* OpenSSL requires the next SSL_write after WANT to use the same
+               length and unchanged bytes. The queue may grow or move while
+               the socket drains, so pin the length explicitly. */
+            s->ssl_retry_len = write_len;
             return; /* resume on next event */
         }
         if (e == SSL_ERROR_ZERO_RETURN) {
@@ -364,11 +431,10 @@ static void promote_open(tm_ssl_stream *s) {
     }
 }
 
-static void pump_read(tm_ssl_stream *s) {
+static void pump_read_impl(tm_ssl_stream *s) {
     if (s->state == TM_SS_STATE_CLOSED) return;
     for (;;) {
         int n = SSL_read(s->ssl, s->inbuf, (int)sizeof(s->inbuf));
-        fprintf(stderr, "DBG ssl_read %p %d\n", (void *)s, n);
         if (n > 0) {
             /* handshake may complete inside SSL_read; promote before
                delivering data so writers see OPEN state */
@@ -412,16 +478,29 @@ static void pump_read(tm_ssl_stream *s) {
     }
 }
 
+/* Read callbacks are allowed to close their owning relay.  Defer freeing the
+   SSL stream until the SSL_read loop has unwound; otherwise a protocol error
+   can free `s` at the callback boundary and the loop immediately dereferences
+   it again. */
+static void pump_read(tm_ssl_stream *s) {
+    if (s->pumping_read) return;
+    s->pumping_read = true;
+    pump_read_impl(s);
+    s->pumping_read = false;
+    if (s->free_pending && !s->inflight) do_free(s);
+}
+
 static void on_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
     tm_ssl_stream *s = (tm_ssl_stream *)stream->data;
     (void)buf;
     if (!s) return;
     if (nread > 0) {
-        fprintf(stderr, "DBG on_read %p %zu\n", (void *)s, (size_t)nread);
         BIO_write(s->rbio, buf->base, (int)nread);
+        free(buf->base);
         pump_read(s);
         return;
     }
+    free(buf->base);
     if (nread == UV_EOF) {
         /* abrupt TCP EOF without close_notify: treat as EOF, not protocol error,
            to keep relay semantics on the raw side */
@@ -441,11 +520,12 @@ static void on_udp_recv(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
     tm_ssl_stream *s = (tm_ssl_stream *)handle->data;
     if (!s) return;
     if (nread > 0) {
-        fprintf(stderr, "DBG on_read %p %zu\n", (void *)s, (size_t)nread);
         BIO_write(s->rbio, buf->base, (int)nread);
+        free(buf->base);
         pump_read(s);
         return;
     }
+    free(buf->base);
     if (nread < 0) {
         s->last_err = TM_ERR_IO;
         finish_close(s);
@@ -542,14 +622,20 @@ void tm_ssl_stream_start(tm_ssl_stream *s) {
    byte on the wire. Continues from on_write_done while shutdown_pending. */
 static void tls_try_shutdown(tm_ssl_stream *s) {
     while (s->pq_off < s->pq_len && s->state == TM_SS_STATE_OPEN) {
-        int w = SSL_write(s->ssl, s->pq + s->pq_off,
-                          (int)(s->pq_len - s->pq_off));
-        if (w > 0) { s->pq_off += (size_t)w; continue; }
+        size_t available = s->pq_len - s->pq_off;
+        size_t write_len = s->ssl_retry_len ? s->ssl_retry_len
+                                             : (available < 16384u ? available : 16384u);
+        int w = SSL_write(s->ssl, s->pq + s->pq_off, (int)write_len);
+        if (w > 0) {
+            s->ssl_retry_len = 0;
+            s->pq_off += (size_t)w;
+            continue;
+        }
         int e = SSL_get_error(s->ssl, w);
         if (e == SSL_ERROR_WANT_WRITE || e == SSL_ERROR_WANT_READ) {
+            s->ssl_retry_len = write_len;
             pump_write(s); /* drains the wbio; may start a write */
-            if (s->inflight) return; /* continue when the write completes */
-            continue;
+            return; /* retry unchanged on the write/read event */
         }
         if (e == SSL_ERROR_ZERO_RETURN) {
             s->last_err = TM_ERR_EOF;
@@ -602,6 +688,9 @@ void tm_ssl_stream_close(tm_ssl_stream *s) {
         if (s->is_dtls) uv_udp_recv_stop(s->udp);
         else uv_read_stop(s->tcp);
     }
-    if (s->inflight) return; /* freed by on_write_done */
+    if (s->inflight || s->pumping_read) {
+        s->free_pending = true;
+        return; /* freed by on_write_done or after the read callback unwinds */
+    }
     do_free(s);
 }

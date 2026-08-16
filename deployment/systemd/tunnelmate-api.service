@@ -1,0 +1,28 @@
+[Unit]
+Description=TunnelMate FastAPI control plane
+After=tunnelmated.service
+Requires=tunnelmated.service
+
+[Service]
+Type=simple
+User=tunnelmate
+Group=tunnelmate
+EnvironmentFile=/etc/tunnelmate/tunnelmate.env
+ExecStart=/opt/tunnelmate/venv/bin/tunnelmate-api
+Restart=on-failure
+RestartSec=2s
+TimeoutStopSec=10s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+ReadWritePaths=/run/tunnelmate /var/lib/tunnelmate
+
+[Install]
+WantedBy=multi-user.target

@@ -10,7 +10,7 @@
 
 /* tunnelmate-peer: consumer-side access to closed tunnels.
    Usage: tunnelmate-peer connect tunnel://host[:port]/<tunnel-id>
-              --token TOKEN --listen HOST:PORT
+              --token TOKEN|--token-file FILE --listen HOST:PORT
               [--protocol tcp|udp] [--ca FILE] [--no-verify-ca] */
 
 static void usage(FILE *out) {
@@ -28,6 +28,7 @@ static void usage(FILE *out) {
         "\n"
         "Options:\n"
         "  --token TOKEN          shared token for the tunnel (required)\n"
+        "  --token-file FILE      read token from a protected file\n"
         "  --listen HOST:PORT     local address to expose (required)\n"
         "  --protocol tcp|udp     tunnel protocol (default: tcp)\n"
         "  --ca FILE              CA bundle to verify the broker certificate\n"
@@ -161,6 +162,7 @@ int main(int argc, char **argv) {
 
     static const struct option opts[] = {
         {"token", required_argument, NULL, 't'},
+        {"token-file", required_argument, NULL, 'T'},
         {"listen", required_argument, NULL, 'l'},
         {"protocol", required_argument, NULL, 'p'},
         {"ca", required_argument, NULL, 'c'},
@@ -170,12 +172,23 @@ int main(int argc, char **argv) {
         {NULL, 0, NULL, 0},
     };
     int c;
-    while ((c = getopt_long(argc - 2, argv + 2, "t:l:p:c:nL:h", opts, NULL))
+    while ((c = getopt_long(argc - 2, argv + 2, "t:T:l:p:c:nL:h", opts, NULL))
            != -1) {
         switch (c) {
         case 't':
             snprintf(peer.cfg.token, sizeof(peer.cfg.token), "%s", optarg);
             break;
+        case 'T': {
+            FILE *fp = fopen(optarg, "r");
+            if (!fp || !fgets(peer.cfg.token, sizeof(peer.cfg.token), fp)) {
+                if (fp) fclose(fp);
+                fprintf(stderr, "cannot read --token-file\n");
+                return 1;
+            }
+            fclose(fp);
+            peer.cfg.token[strcspn(peer.cfg.token, "\r\n")] = '\0';
+            break;
+        }
         case 'l':
             if (parse_listen(&peer.cfg, optarg) != 0) {
                 fprintf(stderr, "invalid --listen address '%s'\n", optarg);

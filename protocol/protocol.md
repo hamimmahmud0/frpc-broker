@@ -15,7 +15,7 @@ order). There is no padding in headers; every field is tightly packed.
 
 ## Message header (control plane, TCP)
 
-Every control message starts with a fixed 8-byte header:
+Every control message starts with a fixed 10-byte header:
 
 ```text
  0                   1                   2                   3
@@ -105,7 +105,7 @@ stream closed.
 
 ## UDP (DTLS) datagram envelope
 
-The UDP data path uses DTLS 1.3 records (OpenSSL) directly as the transport.
+The UDP data path uses DTLS 1.2 records (OpenSSL) directly as the transport.
 Inside each DTLS application-data record, TunnelMate places a compact
 envelope so the receiver can route the datagram:
 
@@ -149,7 +149,7 @@ broker -> raw UDP to original (src_ip, src_port)
 | Limit | Default | Enforced |
 |---|---|---|
 | max frame payload | 256 KiB | reject before allocation |
-| max control message size | 256 KiB + 8 | reject before allocation |
+| max control message size | 256 KiB + 10 | reject before allocation |
 | max tunnel id | 128 B | reject |
 | max secret/token | 256 B | reject |
 | max error string | 256 B | truncate, log at debug |

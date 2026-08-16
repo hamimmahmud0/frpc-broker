@@ -1,6 +1,7 @@
 #include "agent.h"
 #include "tunnelmate/config.h"
 #include "tunnelmate/log.h"
+#include "tunnelmate/tls.h"
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +19,8 @@ static int cfg_defaults(tm_agent_app *a) {
     tm_agent_cfg *c = &a->cfg;
     memset(c, 0, sizeof(*c));
     c->log_level = TM_LOG_INFO;
+    c->proto = TM_PROTO_TCP;
+    c->verify_ca = true;
     c->heartbeat_interval_ms = 5000;
     c->idle_timeout_ms = 30000;
     c->reconnect_delay_ms = 1000;
@@ -40,6 +43,13 @@ static int cfg_apply(tm_agent_app *a, tm_config *c) {
         strncpy(g->broker_host, s, sizeof(g->broker_host) - 1);
     if (tm_config_get_int(c, "agent.broker_port", 0, &v))
         g->broker_port = (uint16_t)v;
+    if (tm_config_get_int(c, "agent.broker_udp_port", 0, &v))
+        g->broker_udp_port = (uint16_t)v;
+    if (tm_config_get_str(c, "agent.protocol", "tcp", &s)) {
+        if (strcmp(s, "tcp") == 0) g->proto = TM_PROTO_TCP;
+        else if (strcmp(s, "udp") == 0) g->proto = TM_PROTO_UDP;
+        else return TM_ERR;
+    }
     if (tm_config_get_str(c, "agent.tunnel_id", NULL, &s))
         strncpy(g->tunnel_id, s, sizeof(g->tunnel_id) - 1);
     if (tm_config_get_str(c, "agent.agent_secret", NULL, &s))
@@ -50,6 +60,11 @@ static int cfg_apply(tm_agent_app *a, tm_config *c) {
         g->local_port = (uint16_t)v;
     if (tm_config_get_str(c, "agent.name", NULL, &s))
         strncpy(g->name, s, sizeof(g->name) - 1);
+    if (tm_config_get_str(c, "agent.ca_path", NULL, &s))
+        strncpy(g->ca_path, s, sizeof(g->ca_path) - 1);
+    bool bv;
+    if (tm_config_get_bool(c, "agent.verify_ca", true, &bv))
+        g->verify_ca = bv;
     if (tm_config_get_str(c, "agent.log_level", "info", &s))
         tm_log_level_parse(s, &g->log_level);
     if (tm_config_get_int(c, "agent.heartbeat_interval_ms", 0, &v) && v > 0)
@@ -76,6 +91,11 @@ static int cfg_apply(tm_agent_app *a, tm_config *c) {
     if (g->broker_host[0] == 0 || g->broker_port == 0) {
         tm_log_error(a->log, "bad_config", NULL, NULL,
                      "agent.broker_host and agent.broker_port required");
+        return TM_ERR;
+    }
+    if (g->proto == TM_PROTO_UDP && g->broker_udp_port == 0) {
+        tm_log_error(a->log, "bad_config", NULL, NULL,
+                     "agent.broker_udp_port required for UDP tunnels");
         return TM_ERR;
     }
     if (g->tunnel_id[0] == 0 || g->agent_secret[0] == 0) {
@@ -144,7 +164,6 @@ int main(int argc, char **argv) {
         tm_config_free(cfg);
         return 1;
     }
-    app.log = tm_log_new(STDERR_FILENO, "agent", app.cfg.log_level);
     tm_log_free(app.log);
     app.log = tm_log_new(STDERR_FILENO, "agent", app.cfg.log_level);
     tm_config_free(cfg);
@@ -157,18 +176,11 @@ int main(int argc, char **argv) {
     uv_timer_init(app.loop, &app.reconnect_timer);
     app.reconnect_timer.data = &app;
 
-    /* TLS contexts: control conns negotiate TLS 1.2-1.3 (broker max 1.3);
-       data conns are forced to TLS 1.2 by the broker anyway. */
-    app.tls_ctx = SSL_CTX_new(TLS_client_method());
-    if (!app.tls_ctx) { tm_log_error(app.log, "ssl_ctx", NULL, NULL, "tls ctx"); return 1; }
-    SSL_CTX_set_min_proto_version(app.tls_ctx, TLS1_2_VERSION);
-    SSL_CTX_set_max_proto_version(app.tls_ctx, TLS1_3_VERSION);
-    app.dtls_ctx = SSL_CTX_new(DTLS_client_method());
-    if (!app.dtls_ctx) { tm_log_error(app.log, "ssl_ctx", NULL, NULL, "dtls ctx"); return 1; }
-    SSL_CTX_set_min_proto_version(app.dtls_ctx, DTLS1_2_VERSION);
-    SSL_CTX_set_max_proto_version(app.dtls_ctx, DTLS1_2_VERSION);
-    SSL_CTX_set_verify(app.tls_ctx, SSL_VERIFY_NONE, NULL);
-    SSL_CTX_set_verify(app.dtls_ctx, SSL_VERIFY_NONE, NULL);
+    const char *ca = app.cfg.ca_path[0] ? app.cfg.ca_path : NULL;
+    app.tls_ctx = tm_tls_client_ctx(ca, app.cfg.verify_ca, errbuf, sizeof(errbuf));
+    if (!app.tls_ctx) { tm_log_error(app.log, "ssl_ctx", NULL, NULL, "%s", errbuf); return 1; }
+    app.dtls_ctx = tm_dtls_client_ctx(ca, app.cfg.verify_ca, errbuf, sizeof(errbuf));
+    if (!app.dtls_ctx) { tm_log_error(app.log, "ssl_ctx", NULL, NULL, "%s", errbuf); return 1; }
 
     uv_signal_t sigint, sigterm;
     uv_signal_init(app.loop, &sigint);
@@ -183,7 +195,7 @@ int main(int argc, char **argv) {
                 (unsigned)app.cfg.broker_port);
 
     tm_agent_connect(&app);
-    tm_agent_udp_start(&app);
+    if (app.cfg.proto == TM_PROTO_UDP) tm_agent_udp_start(&app);
 
     uv_run(app.loop, UV_RUN_DEFAULT);
 

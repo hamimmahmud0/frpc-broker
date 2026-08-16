@@ -105,12 +105,13 @@ static void tcp_read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf)
     tm_io_tcp *t = (tm_io_tcp *)stream->data;
     if (!t) return;
     if (nread > 0) {
-        fprintf(stderr, "DBG tcp_recv %zu\n", (size_t)nread);
         if (t->cbs.read_cb) {
             t->cbs.read_cb(&t->io, (uint8_t *)buf->base, (size_t)nread, t->cbs.arg);
         }
+        free(buf->base);
         return;
     }
+    free(buf->base);
     if (nread == UV_EOF) {
         if (t->cbs.eof_cb) t->cbs.eof_cb(&t->io, t->cbs.arg);
         return;

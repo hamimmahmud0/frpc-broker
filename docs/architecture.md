@@ -30,7 +30,7 @@ in one does not take down the others:
           +------------+-------------+
                        |
                TLS reverse tunnel (TCP)
-               DTLS 1.3 tunnel (UDP)
+               DTLS 1.2 tunnel (UDP)
                        |
                 tunnelmate-agent
                        |
@@ -44,7 +44,7 @@ in one does not take down the others:
 | Plane | Process | Language | Failure containment |
 |---|---|---|---|
 | Data plane (TCP) | `tunnelmated`, `tunnelmate-agent`, `tunnelmate-peer` | C17, libuv, OpenSSL | FastAPI crash does not terminate tunnels |
-| Data plane (UDP) | same binaries, DTLS 1.3 transport | C17, libuv, OpenSSL | same |
+| Data plane (UDP) | same binaries, DTLS 1.2 transport | C17, libuv, OpenSSL | same |
 | Control plane | FastAPI (`tunnelmate_api`) + SQLite | Python | broker data-path problems do not crash API |
 | IPC | Unix-domain socket | — | broker continues relaying if FastAPI dies |
 
@@ -77,7 +77,7 @@ shared token over TLS, then exposes a local TCP listener.
 
 ## Data plane: UDP
 
-UDP tunnels use an **encrypted datagram transport** (DTLS 1.3, see
+UDP tunnels use an **encrypted datagram transport** (DTLS 1.2, see
 `docs/adr/0002-udp-transport.md`) between agent and broker, preserving datagram
 semantics end-to-end:
 
@@ -87,7 +87,7 @@ Internet UDP client
       v
  broker public UDP listener (e.g. :25421)
       |
-      | DTLS 1.3 datagram transport  (bounded packet queues)
+      | DTLS 1.2 datagram transport  (bounded packet queues)
       v
  tunnelmate-agent
       |
@@ -147,6 +147,6 @@ closes remaining connections and exits. See `docs/failure-cases.md`.
 ## Key decisions (ADR index)
 
 1. `0001-tcp-transport.md` — TCP data plane: TLS control + per-stream TLS data connections.
-2. `0002-udp-transport.md` — UDP data plane: DTLS 1.3 datagram transport (QUIC deferred).
+2. `0002-udp-transport.md` — UDP data plane: DTLS 1.2 datagram transport (QUIC deferred).
 3. `0003-plane-separation.md` — data plane in C, control plane in FastAPI, Unix-socket IPC.
 4. `0004-secrets.md` — tunnel-specific capabilities, hashed storage, no global token.

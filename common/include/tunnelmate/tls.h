@@ -38,6 +38,13 @@ SSL_CTX *tm_tls_client_ctx(const char *ca_path, bool verify,
 SSL_CTX *tm_dtls_client_ctx(const char *ca_path, bool verify,
                             char *errbuf, size_t errlen);
 
+/* Configure SNI and certificate hostname/IP verification on a client SSL.
+   Call once after SSL_new and before the handshake. */
+tm_status tm_tls_configure_client_ssl(SSL *ssl, const char *hostname,
+                                      bool verify);
+
+tm_status tm_dtls_attach_bio_pair(SSL *ssl, BIO **rbio, BIO **wbio);
+
 /* SSL* objects. tls_type: 1 = TLS, 0 = DTLS. */
 SSL *tm_ssl_new(SSL_CTX *ctx, bool is_dtls);
 

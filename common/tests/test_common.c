@@ -48,6 +48,38 @@ static void test_frame_payload(void) {
     tm_frame_reader_free(r);
 }
 
+static void test_multiple_frames_and_drain(void) {
+    tm_frame *a = tm_frame_make(TM_MSG_PING, 1, NULL, 0);
+    tm_frame *b = tm_frame_make(TM_MSG_PONG, 2, NULL, 0);
+    size_t alen, blen;
+    uint8_t *abuf = tm_frame_encode(a, &alen);
+    uint8_t *bbuf = tm_frame_encode(b, &blen);
+    const uint8_t raw[] = {0xde, 0xad, 0xbe, 0xef};
+    uint8_t *both = malloc(alen + blen + sizeof(raw));
+    memcpy(both, abuf, alen);
+    memcpy(both + alen, bbuf, blen);
+    memcpy(both + alen + blen, raw, sizeof(raw));
+
+    tm_frame_reader *r = tm_frame_reader_new();
+    bool err = false;
+    tm_frame *out = tm_frame_reader_feed(r, both, alen + blen + sizeof(raw), &err);
+    CHECK(out && !err && out->type == TM_MSG_PING && out->stream_id == 1);
+    tm_frame_free(out);
+    out = tm_frame_reader_feed(r, NULL, 0, &err);
+    CHECK(out && !err && out->type == TM_MSG_PONG && out->stream_id == 2);
+    tm_frame_free(out);
+    size_t n = 0;
+    uint8_t *left = tm_frame_reader_drain(r, &n);
+    CHECK(n == sizeof(raw) && memcmp(left, raw, sizeof(raw)) == 0);
+    free(left);
+    free(both);
+    free(abuf);
+    free(bbuf);
+    tm_frame_free(a);
+    tm_frame_free(b);
+    tm_frame_reader_free(r);
+}
+
 static void test_frame_oversize_rejected(void) {
     uint8_t hdr[TM_FRAME_HDR_LEN];
     hdr[0] = TM_PROTO_VERSION;
@@ -152,7 +184,9 @@ static void test_crypto(void) {
     CHECK(strlen(a) == 32 && strlen(b) == 32);
     CHECK(strcmp(a, b) != 0); /* astronomically unlikely to collide */
     for (int i = 0; i < 32; i++) {
-        CHECK(a[i] >= 'a' && a[i] <= 'z' || a[i] >= 'A' && a[i] <= 'Z' || a[i] >= '0' && a[i] <= '9');
+        CHECK((a[i] >= 'a' && a[i] <= 'z') ||
+              (a[i] >= 'A' && a[i] <= 'Z') ||
+              (a[i] >= '0' && a[i] <= '9'));
     }
     uint8_t k[16] = {0}, msg[8] = {0};
     uint8_t d1[32], d2[32];
@@ -192,6 +226,7 @@ static void test_utf8(void) {
 int main(void) {
     test_frame_roundtrip();
     test_frame_payload();
+    test_multiple_frames_and_drain();
     test_frame_oversize_rejected();
     test_frame_bad_version();
     test_frame_truncated();

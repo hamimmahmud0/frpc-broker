@@ -28,10 +28,10 @@ void tm_log_event(tm_logger *lg, tm_log_level lvl, const char *event,
 void tm_log_msg(tm_logger *lg, tm_log_level lvl, const char *fmt, ...)
     __attribute__((format(printf, 3, 4)));
 
-#define tm_log_debug(lg, ev, ...) tm_log_event((lg), TM_LOG_DEBUG, (ev), NULL, NULL, __VA_ARGS__)
-#define tm_log_info(lg, ev, ...)  tm_log_event((lg), TM_LOG_INFO, (ev), NULL, NULL, __VA_ARGS__)
-#define tm_log_warn(lg, ev, ...)  tm_log_event((lg), TM_LOG_WARN, (ev), NULL, NULL, __VA_ARGS__)
-#define tm_log_error(lg, ev, ...) tm_log_event((lg), TM_LOG_ERROR, (ev), NULL, NULL, __VA_ARGS__)
+#define tm_log_debug(lg, ev, ...) tm_log_event((lg), TM_LOG_DEBUG, (ev), __VA_ARGS__)
+#define tm_log_info(lg, ev, ...)  tm_log_event((lg), TM_LOG_INFO, (ev), __VA_ARGS__)
+#define tm_log_warn(lg, ev, ...)  tm_log_event((lg), TM_LOG_WARN, (ev), __VA_ARGS__)
+#define tm_log_error(lg, ev, ...) tm_log_event((lg), TM_LOG_ERROR, (ev), __VA_ARGS__)
 
 const char *tm_log_level_name(tm_log_level lvl);
 int tm_log_level_parse(const char *s, tm_log_level *out);

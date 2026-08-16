@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ ${EUID} -ne 0 ]]; then
+  echo "run as root" >&2
+  exit 1
+fi
+
+src_dir=${TUNNELMATE_SOURCE_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}
+install_root=/opt/tunnelmate
+
+apt-get update
+DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+  build-essential cmake pkg-config libuv1-dev libssl-dev python3 python3-venv ca-certificates
+
+getent group tunnelmate >/dev/null || groupadd --system tunnelmate
+id tunnelmate >/dev/null 2>&1 || useradd --system --gid tunnelmate \
+  --home-dir /var/lib/tunnelmate --shell /usr/sbin/nologin tunnelmate
+install -d -o root -g tunnelmate -m 0750 /etc/tunnelmate /etc/tunnelmate/certs
+install -d -o tunnelmate -g tunnelmate -m 0750 /var/lib/tunnelmate /run/tunnelmate
+install -d -o root -g root -m 0755 "$install_root"
+
+cmake -S "$src_dir" -B "$src_dir/build-release" -DCMAKE_BUILD_TYPE=Release
+cmake --build "$src_dir/build-release" --parallel
+cmake --install "$src_dir/build-release" --prefix /usr/local
+
+python3 -m venv "$install_root/venv"
+"$install_root/venv/bin/pip" install --no-cache-dir "$src_dir/control" "$src_dir/python-sdk"
+
+install -o root -g tunnelmate -m 0640 "$src_dir/deployment/broker.conf" /etc/tunnelmate/broker.conf
+if [[ ! -f /etc/tunnelmate/tunnelmate.env ]]; then
+  : "${TUNNELMATE_PUBLIC_HOST:?set TUNNELMATE_PUBLIC_HOST to the public DNS name}"
+  : "${TUNNELMATE_ADMIN_PASSWORD:?set a unique TUNNELMATE_ADMIN_PASSWORD (12+ characters)}"
+  secret_key=$(openssl rand -hex 32)
+  umask 0027
+  printf '%s\n' \
+    'TUNNELMATE_DB=/var/lib/tunnelmate/control.db' \
+    'TUNNELMATE_BROKER_SOCKET=/run/tunnelmate/broker.sock' \
+    "TUNNELMATE_PUBLIC_HOST=$TUNNELMATE_PUBLIC_HOST" \
+    'TUNNELMATE_BROKER_PORT=7000' \
+    "TUNNELMATE_SECRET_KEY=$secret_key" \
+    'TUNNELMATE_PRODUCTION=true' \
+    'TUNNELMATE_SECURE_COOKIES=true' \
+    'TUNNELMATE_ADMIN_USERNAME=operator' \
+    "TUNNELMATE_ADMIN_PASSWORD=$TUNNELMATE_ADMIN_PASSWORD" \
+    'TUNNELMATE_API_HOST=127.0.0.1' \
+    'TUNNELMATE_API_PORT=8000' > /etc/tunnelmate/tunnelmate.env
+  chown root:tunnelmate /etc/tunnelmate/tunnelmate.env
+  chmod 0640 /etc/tunnelmate/tunnelmate.env
+fi
+if [[ ! -f /etc/tunnelmate/certs/broker.crt || ! -f /etc/tunnelmate/certs/broker.key ]]; then
+  host=${TUNNELMATE_PUBLIC_HOST:-localhost}
+  openssl req -x509 -newkey rsa:3072 -nodes -days 30 \
+    -subj "/CN=$host" -addext "subjectAltName=DNS:$host" \
+    -keyout /etc/tunnelmate/certs/broker.key \
+    -out /etc/tunnelmate/certs/broker.crt
+  echo "WARNING: installed a development self-signed transport certificate." >&2
+  echo "Replace it with a trusted certificate before public production use." >&2
+fi
+chown root:tunnelmate /etc/tunnelmate/certs/broker.*
+chmod 0640 /etc/tunnelmate/certs/broker.*
+
+install -o root -g root -m 0644 "$src_dir/deployment/systemd/tunnelmated.service" /etc/systemd/system/
+install -o root -g root -m 0644 "$src_dir/deployment/systemd/tunnelmate-api.service" /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now tunnelmated tunnelmate-api
+sleep 1
+curl --fail --silent http://127.0.0.1:8000/health/ready
+echo
+systemctl --no-pager --full status tunnelmated tunnelmate-api

@@ -104,6 +104,8 @@ struct tm_tunnel {
 
     tm_broker *b;
     tm_tunnel *next;
+    bool deleting;
+    int close_refs;
 };
 
 /* ---------------------------------------------------------------- */
@@ -175,6 +177,7 @@ struct tm_udp_session {
     bool handshake_done;
     bool inflight;
     bool closing;
+    bool timer_closed;
     uint64_t last_rx_ms;
     uint64_t pkts_rx, pkts_tx;
     long long pkt_win_start;
@@ -182,6 +185,7 @@ struct tm_udp_session {
     /* outbound plaintext queue (envelopes), encrypted in pump */
     uint8_t *outq;
     size_t outq_len, outq_cap, outq_off;
+    size_t outq_packets;
     tm_broker *b;
     tm_udp_session *next;
 };
@@ -254,6 +258,7 @@ struct tm_broker {
 
     /* shutdown */
     bool shutting_down;
+    bool cleaned_up;
     uv_timer_t shutdown_timer;
 
     /* pending control-port connections (pre-promotion) */

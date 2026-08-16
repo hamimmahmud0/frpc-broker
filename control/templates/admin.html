@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>TunnelMate admin</title>
+  <link rel="stylesheet" href="/static/admin.css">
+</head>
+<body data-csrf="{{ csrf }}">
+  <header>
+    <strong>TunnelMate / operations</strong>
+    <span>broker uptime {{ broker.get('uptime_ms', 0) // 1000 }}s · {{ broker.get('tunnel_count', 0) }} runtime tunnels · {{ broker.get('stream_count', 0) }} streams</span>
+    <button id="logout" type="button">Logout {{ session.username }}</button>
+  </header>
+  <main>
+    <section class="metrics">
+      <div><span>ports</span><b>{{ broker.get('ports_used', 0) }}</b></div>
+      <div><span>rx bytes</span><b>{{ broker.get('rx_bytes_total', 0) }}</b></div>
+      <div><span>tx bytes</span><b>{{ broker.get('tx_bytes_total', 0) }}</b></div>
+      <div><span>auth failures</span><b>{{ broker.get('failed_auths', 0) }}</b></div>
+      <div><span>UDP drops</span><b>{{ broker.get('udp_dropped_queue_full', 0) + broker.get('udp_dropped_rate_limit', 0) }}</b></div>
+    </section>
+    <section>
+      <div class="toolbar"><h1>Announcements</h1></div>
+      <div class="table-wrap">
+        <table id="announcements">
+          <thead><tr><th>enabled</th><th>verified</th><th>service</th><th>service ID</th><th>tunnel</th><th>scope</th><th>llms</th><th>attributes</th><th></th></tr></thead>
+          <tbody>
+          {% for ann in announcements %}
+            <tr data-id="{{ ann.announcement_id }}">
+              <td><button class="toggle-ann" data-enabled="{{ 'true' if ann.enabled else 'false' }}">{{ 'yes' if ann.enabled else 'no' }}</button></td>
+              <td><button class="verify-ann" data-verified="{{ 'true' if ann.verified else 'false' }}">{{ 'yes' if ann.verified else 'no' }}</button></td>
+              <td>{{ ann.service_name }}</td><td><code>{{ ann.service_id }}</code></td>
+              <td><code>{{ ann.tunnel_id }}</code></td><td>{{ ann.scope }}</td>
+              <td><a href="{{ ann.llms }}" rel="noreferrer">llms.txt</a></td>
+              <td><code>{{ ann.attributes|tojson }}</code></td>
+              <td><button class="danger delete-ann">delete</button></td>
+            </tr>
+          {% else %}<tr><td colspan="9">No announcements.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <section>
+      <div class="toolbar">
+        <h1>Tunnels</h1>
+        <input id="filter" type="search" placeholder="filter ID, address, protocol, scope" autofocus>
+      </div>
+      <div class="table-wrap">
+        <table id="tunnels">
+          <thead><tr><th>state</th><th>ID</th><th>proto</th><th>scope</th><th>address</th><th>streams/flows</th><th>RX</th><th>TX</th><th>expires</th><th></th></tr></thead>
+          <tbody>
+          {% for tunnel in tunnels %}
+            <tr data-search="{{ tunnel.tunnel_id }} {{ tunnel.peer_address }} {{ tunnel.protocol }} {{ tunnel.scope }}">
+              <td><span class="state {{ 'online' if tunnel.online else 'offline' }}">{{ 'online' if tunnel.online else 'offline' }}</span></td>
+              <td><code>{{ tunnel.tunnel_id }}</code></td>
+              <td>{{ tunnel.protocol|upper }}</td>
+              <td>{{ tunnel.scope }}</td>
+              <td><code>{{ tunnel.peer_address }}</code></td>
+              <td>{{ tunnel.active_streams }}</td>
+              <td>{{ tunnel.rx_bytes }}</td><td>{{ tunnel.tx_bytes }}</td>
+              <td><time data-epoch="{{ tunnel.expires_at }}">{{ tunnel.expires_at }}</time></td>
+              <td><button class="danger delete-tunnel" data-id="{{ tunnel.tunnel_id }}">delete</button></td>
+            </tr>
+          {% else %}<tr><td colspan="10">No tunnels.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <section>
+      <div class="toolbar"><h1>Live topology</h1><button id="refresh-topology">refresh</button></div>
+      <pre id="topology">loading…</pre>
+    </section>
+  </main>
+  <script src="/static/admin.js" defer></script>
+</body>
+</html>

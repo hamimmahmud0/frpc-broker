@@ -19,7 +19,8 @@ static size_t port_index(tm_broker *b, uint16_t port) {
 uint16_t tm_port_alloc(tm_broker *b, tm_proto proto, uint16_t prefer) {
     bool *table = proto == TM_PROTO_TCP ? b->ports_tcp : b->ports_udp;
     size_t n = (size_t)(b->cfg.public_port_end - b->cfg.public_port_start) + 1;
-    if (b->ports_used >= (long long)n) return 0;
+    /* TCP and UDP have independent port namespaces. */
+    if (b->ports_used >= (long long)(n * 2u)) return 0;
     if (prefer && tm_port_in_range(b, prefer) && !table[port_index(b, prefer)]) {
         table[port_index(b, prefer)] = true;
         b->ports_used++;
@@ -117,9 +118,10 @@ int tm_tunnel_delete(tm_broker *b, const char *id, char *err, size_t errlen) {
         snprintf(err, errlen, "tunnel not found");
         return -1;
     }
+    t->deleting = true;
     tm_tunnel_teardown(b, t);
     tunnel_remove_from_list(b, t);
     b->tunnel_count--;
-    free(t);
+    if (t->close_refs == 0) free(t);
     return 0;
 }

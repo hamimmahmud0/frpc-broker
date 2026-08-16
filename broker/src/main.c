@@ -92,6 +92,7 @@ static SSL_CTX *ctx_new(tm_broker *b, bool dtls) {
         tm_log_error(b->log, "tls_ctx_failed", NULL, NULL, "SSL_CTX_new");
         return NULL;
     }
+    SSL_CTX_set_mode(ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
     if (SSL_CTX_use_certificate_chain_file(ctx, b->cfg.tls_cert) != 1) {
         tm_log_error(b->log, "tls_cert_failed", NULL, NULL, "%s", b->cfg.tls_cert);
         return NULL;
@@ -152,6 +153,8 @@ static void hmac_key_load(tm_broker *b) {
 /* ------------------------------------------------------------------ */
 
 static void broker_cleanup(tm_broker *b) {
+    if (b->cleaned_up) return;
+    b->cleaned_up = true;
     tm_control_close_all(b);
     tm_tunnel *t = b->tunnels;
     while (t) {
@@ -159,14 +162,15 @@ static void broker_cleanup(tm_broker *b) {
         tm_tunnel_teardown(b, t);
         t = nxt;
     }
+    b->tunnels = NULL;
     if (b->ipc_open) {
         uv_close((uv_handle_t *)&b->ipc_pipe, NULL);
         b->ipc_open = false;
     }
-    if (b->tls_ctx) SSL_CTX_free(b->tls_ctx);
-    if (b->dtls_ctx) SSL_CTX_free(b->dtls_ctx);
-    if (b->ports_tcp) free(b->ports_tcp);
-    if (b->ports_udp) free(b->ports_udp);
+    if (b->tls_ctx) { SSL_CTX_free(b->tls_ctx); b->tls_ctx = NULL; }
+    if (b->dtls_ctx) { SSL_CTX_free(b->dtls_ctx); b->dtls_ctx = NULL; }
+    if (b->ports_tcp) { free(b->ports_tcp); b->ports_tcp = NULL; }
+    if (b->ports_udp) { free(b->ports_udp); b->ports_udp = NULL; }
     unlink(b->cfg.broker_socket);
 }
 
@@ -219,7 +223,8 @@ int tm_broker_run(tm_broker *b) {
     uv_signal_start(&sigterm, on_signal, SIGTERM);
 
     tm_log_info(b->log, "broker_started", "version", NULL, TM_PROTO_STRING);
-    return uv_run(b->loop, UV_RUN_DEFAULT);
+    (void)uv_run(b->loop, UV_RUN_DEFAULT);
+    return 0;
 }
 
 int main(int argc, char **argv) {

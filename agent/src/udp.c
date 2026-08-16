@@ -1,6 +1,8 @@
 #include "agent.h"
 #include "tunnelmate/net.h"
 #include "tunnelmate/crypto.h"
+#include "tunnelmate/tls.h"
+#include <openssl/err.h>
 
 /* UDP data plane: one DTLS 1.2 client session to the broker's public port.
    After handshake, send AUTH_REQ(agent_secret); on AUTH_OK relay envelopes.
@@ -30,25 +32,44 @@ static void udp_send_raw(tm_agent_app *a, const uint8_t *data, size_t len) {
 
 static void pump_out(tm_agent_app *a);
 
+static void flow_handle_closed(uv_handle_t *handle) {
+    free(handle->data);
+}
+
 /* queue plaintext (envelope bytes) for SSL_write, then flush wbio */
 static void udp_queue(tm_agent_app *a, const uint8_t *data, size_t len) {
     if (a->udp_closing || !a->udp_ssl) return;
-    if (a->udp_outq_len + len > a->udp_outq_cap) {
+    size_t queued = a->udp_outq_len - a->udp_outq_off;
+    size_t max_bytes = 256u * ((size_t)a->cfg.udp_max_datagram_size + 15u);
+    if (a->udp_outq_packets >= 256u || len > UINT32_MAX ||
+        queued + 4u + len > max_bytes) return;
+    if (a->udp_outq_len + 4u + len > a->udp_outq_cap) {
         size_t ncap = a->udp_outq_cap ? a->udp_outq_cap * 2 : 4096;
-        while (ncap < a->udp_outq_len + len) ncap *= 2;
+        while (ncap < a->udp_outq_len + 4u + len) ncap *= 2;
+        if (a->udp_outq_off) {
+            memmove(a->udp_outq, a->udp_outq + a->udp_outq_off,
+                    a->udp_outq_len - a->udp_outq_off);
+            a->udp_outq_len -= a->udp_outq_off;
+            a->udp_outq_off = 0;
+        }
         a->udp_outq = tm_xrealloc(a->udp_outq, ncap);
         a->udp_outq_cap = ncap;
     }
-    memcpy(a->udp_outq + a->udp_outq_len, data, len);
-    a->udp_outq_len += len;
+    wr_u32(a->udp_outq + a->udp_outq_len, (uint32_t)len);
+    memcpy(a->udp_outq + a->udp_outq_len + 4u, data, len);
+    a->udp_outq_len += 4u + len;
+    a->udp_outq_packets++;
     pump_out(a);
 }
 
 static void pump_out(tm_agent_app *a) {
     if (a->udp_closing || !a->udp_ssl) return;
-    if (a->udp_outq_len > 0) {
-        int w = SSL_write(a->udp_ssl, a->udp_outq + a->udp_outq_off,
-                          (int)(a->udp_outq_len - a->udp_outq_off));
+    if (a->udp_outq_off < a->udp_outq_len) {
+        if (a->udp_outq_len - a->udp_outq_off < 4u) return;
+        uint32_t plen = rd_u32(a->udp_outq + a->udp_outq_off);
+        if ((size_t)plen > a->udp_outq_len - a->udp_outq_off - 4u) return;
+        int w = SSL_write(a->udp_ssl, a->udp_outq + a->udp_outq_off + 4u,
+                          (int)plen);
         if (w <= 0) {
             int e = SSL_get_error(a->udp_ssl, w);
             if (e == SSL_ERROR_WANT_READ || e == SSL_ERROR_WANT_WRITE)
@@ -56,7 +77,9 @@ static void pump_out(tm_agent_app *a) {
             tm_agent_udp_stop(a);
             return;
         }
-        a->udp_outq_off += (size_t)w;
+        if ((uint32_t)w != plen) return;
+        a->udp_outq_off += 4u + plen;
+        if (a->udp_outq_packets) a->udp_outq_packets--;
         if (a->udp_outq_off == a->udp_outq_len) {
             a->udp_outq_len = 0;
             a->udp_outq_off = 0;
@@ -68,6 +91,7 @@ static void pump_out(tm_agent_app *a) {
         if (n <= 0) break;
         udp_send_raw(a, chunk, (size_t)n);
     }
+    if (a->udp_outq_off < a->udp_outq_len) pump_out(a);
 }
 
 /* ------------------------------------------------------------------ */
@@ -78,14 +102,13 @@ static void flow_close(tm_agent_app *a, tm_alflow *f) {
     if (f->closing) return;
     f->closing = true;
     uv_udp_recv_stop(&f->sock);
-    if (!uv_is_closing((uv_handle_t *)&f->sock))
-        uv_close((uv_handle_t *)&f->sock, NULL);
     tm_alflow **pp = &a->udp_flows;
     while (*pp) {
         if (*pp == f) { *pp = f->next; break; }
         pp = &(*pp)->next;
     }
-    free(f);
+    if (!uv_is_closing((uv_handle_t *)&f->sock))
+        uv_close((uv_handle_t *)&f->sock, flow_handle_closed);
 }
 
 static tm_alflow *flow_find(tm_agent_app *a, uint64_t flow_id) {
@@ -96,8 +119,10 @@ static tm_alflow *flow_find(tm_agent_app *a, uint64_t flow_id) {
 
 static void flow_alloc_cb(uv_handle_t *handle, size_t suggested, uv_buf_t *buf) {
     (void)handle; (void)suggested;
-    buf->base = tm_xmalloc(TM_DEFAULT_DATAGRAM + 512u);
-    buf->len = TM_DEFAULT_DATAGRAM + 512u;
+    /* This callback also receives DTLS handshake flights, which can be much
+       larger than the configured application datagram MTU. */
+    buf->base = tm_xmalloc(65536u);
+    buf->len = 65536u;
 }
 
 static void flow_recv_cb(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
@@ -132,26 +157,22 @@ static void handle_broker_env(tm_agent_app *a, uint64_t flow_id,
         long long nf = 0;
         for (tm_alflow *x = a->udp_flows; x; x = x->next) nf++;
         if (nf >= a->cfg.udp_max_flows) return;
-        uv_udp_t *sock = tm_xcalloc(1, sizeof(*sock));
-        uv_udp_init(a->loop, sock);
-        struct sockaddr_storage sa;
-        if (tm_addr_parse(a->cfg.local_host, a->cfg.local_port, &sa) != TM_OK) {
-            uv_close((uv_handle_t *)sock, NULL);
-            free(sock);
-            return;
-        }
-        if (uv_udp_connect(sock, (const struct sockaddr *)&sa) != 0) {
-            uv_close((uv_handle_t *)sock, NULL);
-            free(sock);
-            return;
-        }
         f = tm_xcalloc(1, sizeof(*f));
         f->flow_id = flow_id;
         f->a = a;
-        f->sock = *sock;
+        uv_udp_init(a->loop, &f->sock);
+        f->sock.data = f;
+        struct sockaddr_storage sa;
+        if (tm_addr_parse(a->cfg.local_host, a->cfg.local_port, &sa) != TM_OK) {
+            uv_close((uv_handle_t *)&f->sock, flow_handle_closed);
+            return;
+        }
+        if (uv_udp_connect(&f->sock, (const struct sockaddr *)&sa) != 0) {
+            uv_close((uv_handle_t *)&f->sock, flow_handle_closed);
+            return;
+        }
         f->sock.data = f;
         f->last_seen_ms = tm_now_ms();
-        free(sock);
         f->next = a->udp_flows;
         a->udp_flows = f;
         uv_udp_recv_start(&f->sock, flow_alloc_cb, flow_recv_cb);
@@ -160,10 +181,9 @@ static void handle_broker_env(tm_agent_app *a, uint64_t flow_id,
     uint8_t *copy = tm_xmalloc(plen);
     memcpy(copy, payload, plen);
     uv_buf_t b = uv_buf_init((char *)copy, (unsigned)plen);
-    uv_udp_send_t *req = tm_xcalloc(1, sizeof(*req));
-    tm_asend *wr = (tm_asend *)req;
+    tm_asend *wr = tm_xcalloc(1, sizeof(*wr));
     wr->buf = copy;
-    uv_udp_send(req, &f->sock, &b, 1, NULL, send_done);
+    uv_udp_send(&wr->req, &f->sock, &b, 1, NULL, send_done);
 }
 
 static void flow_sweep_cb(uv_timer_t *t) {
@@ -200,8 +220,11 @@ static void udp_recv_cb(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
             return;
         }
         if (e != SSL_ERROR_NONE) {
+            unsigned long oe = ERR_get_error();
+            char detail[160];
+            ERR_error_string_n(oe, detail, sizeof(detail));
             tm_log_warn(a->log, "udp_dtls_error", NULL, NULL,
-                        "handshake failed (err=%d)", e);
+                        "handshake failed (err=%d openssl=%s)", e, detail);
             tm_agent_udp_stop(a);
             return;
         }
@@ -263,19 +286,29 @@ void tm_agent_udp_start(tm_agent_app *a) {
     if (a->udp_ssl) return; /* already running */
     uv_udp_init(a->loop, &a->udp_sock);
     a->udp_sock.data = a;
+    struct sockaddr_storage broker_addr;
+    if (tm_addr_parse(a->cfg.broker_host, a->cfg.broker_udp_port,
+                      &broker_addr) != TM_OK ||
+        uv_udp_connect(&a->udp_sock,
+                       (const struct sockaddr *)&broker_addr) != 0) {
+        uv_close((uv_handle_t *)&a->udp_sock, NULL);
+        return;
+    }
     a->udp_ssl = SSL_new(a->dtls_ctx);
     if (!a->udp_ssl) { uv_close((uv_handle_t *)&a->udp_sock, NULL); return; }
-    a->udp_rbio = BIO_new(BIO_s_mem());
-    a->udp_wbio = BIO_new(BIO_s_mem());
-    if (!a->udp_rbio || !a->udp_wbio) {
-        if (a->udp_rbio) BIO_free(a->udp_rbio);
-        if (a->udp_wbio) BIO_free(a->udp_wbio);
+    if (tm_tls_configure_client_ssl(a->udp_ssl, a->cfg.broker_host,
+                                    a->cfg.verify_ca) != TM_OK) {
         SSL_free(a->udp_ssl);
         a->udp_ssl = NULL;
         uv_close((uv_handle_t *)&a->udp_sock, NULL);
         return;
     }
-    SSL_set_bio(a->udp_ssl, a->udp_rbio, a->udp_wbio);
+    if (tm_dtls_attach_bio_pair(a->udp_ssl, &a->udp_rbio, &a->udp_wbio) != TM_OK) {
+        SSL_free(a->udp_ssl);
+        a->udp_ssl = NULL;
+        uv_close((uv_handle_t *)&a->udp_sock, NULL);
+        return;
+    }
     SSL_set_connect_state(a->udp_ssl);
     uv_udp_recv_start(&a->udp_sock, flow_alloc_cb, udp_recv_cb);
     uv_timer_init(a->loop, &a->udp_timer);
@@ -285,7 +318,7 @@ void tm_agent_udp_start(tm_agent_app *a) {
     SSL_connect(a->udp_ssl);
     pump_out(a);
     tm_log_info(a->log, "udp_started", NULL, NULL, "%s:%u",
-                a->cfg.broker_host, (unsigned)a->cfg.broker_port);
+                a->cfg.broker_host, (unsigned)a->cfg.broker_udp_port);
 }
 
 void tm_agent_udp_stop(tm_agent_app *a) {
@@ -298,10 +331,11 @@ void tm_agent_udp_stop(tm_agent_app *a) {
         uv_close((uv_handle_t *)&a->udp_timer, NULL);
     while (a->udp_flows) flow_close(a, a->udp_flows);
     if (a->udp_ssl) { SSL_free(a->udp_ssl); a->udp_ssl = NULL; }
-    a->udp_rbio = NULL;
-    a->udp_wbio = NULL;
+    if (a->udp_rbio) { BIO_free(a->udp_rbio); a->udp_rbio = NULL; }
+    if (a->udp_wbio) { BIO_free(a->udp_wbio); a->udp_wbio = NULL; }
     free(a->udp_outq);
     a->udp_outq = NULL;
     a->udp_outq_len = a->udp_outq_cap = a->udp_outq_off = 0;
+    a->udp_outq_packets = 0;
     a->udp_authed = false;
 }

@@ -134,10 +134,16 @@ void tm_tunnel_listener_start(tm_broker *b, tm_tunnel *tun) {
                 "%s port=%u", tun->id, (unsigned)tun->public_port);
 }
 
+static void tunnel_listener_closed(uv_handle_t *h) {
+    tm_tunnel *tun = (tm_tunnel *)h->data;
+    if (tun->deleting && --tun->close_refs == 0) free(tun);
+}
+
 void tm_tunnel_listener_stop(tm_broker *b, tm_tunnel *tun) {
     (void)b;
     if (tun->listener_open) {
-        uv_close((uv_handle_t *)&tun->listener, NULL);
+        if (tun->deleting) tun->close_refs++;
+        uv_close((uv_handle_t *)&tun->listener, tunnel_listener_closed);
         tun->listener_open = false;
     }
 }

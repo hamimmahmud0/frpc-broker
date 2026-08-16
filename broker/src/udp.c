@@ -1,6 +1,8 @@
 #include "broker.h"
 #include "tunnelmate/crypto.h"
 #include "tunnelmate/net.h"
+#include "tunnelmate/tls.h"
+#include <openssl/err.h>
 
 /* UDP plane: one public DTLS socket per tunnel. The broker demultiplexes
    datagrams on the tunnel socket by peer address into per-peer DTLS
@@ -21,6 +23,7 @@ typedef struct {
 
 static void pump_out(tm_udp_session *s);
 static void pump_in(tm_udp_session *s);
+static void session_maybe_free(tm_udp_session *s);
 
 static void send_done(uv_udp_send_t *req, int status) {
     tm_udp_send *wr = (tm_udp_send *)req;
@@ -30,7 +33,8 @@ static void send_done(uv_udp_send_t *req, int status) {
     free(wr);
     if (s) {
         s->inflight = false;
-        pump_out(s);
+        if (s->closing) session_maybe_free(s);
+        else pump_out(s);
     }
 }
 
@@ -52,9 +56,17 @@ static void udp_send_raw(tm_udp_session *s, tm_tunnel *tun,
 /* queue plaintext (envelope bytes) to be encrypted and sent */
 static void session_queue(tm_udp_session *s, const uint8_t *data, size_t len) {
     if (s->closing) return;
-    if (s->outq_len + len > s->outq_cap) {
+    size_t queued = s->outq_len - s->outq_off;
+    size_t max_bytes = (size_t)s->b->cfg.udp_queue_packets *
+                       ((size_t)s->b->cfg.udp_max_datagram_size + 15u);
+    if (s->outq_packets >= (size_t)s->b->cfg.udp_queue_packets ||
+        len > UINT32_MAX || queued + 4u + len > max_bytes) {
+        s->b->udp_dropped_queue_full++;
+        return;
+    }
+    if (s->outq_len + 4u + len > s->outq_cap) {
         size_t ncap = s->outq_cap ? s->outq_cap * 2 : 4096;
-        while (ncap < s->outq_len + len) ncap *= 2;
+        while (ncap < s->outq_len + 4u + len) ncap *= 2;
         if (s->outq_off) {
             memmove(s->outq, s->outq + s->outq_off, s->outq_len - s->outq_off);
             s->outq_len -= s->outq_off;
@@ -63,8 +75,10 @@ static void session_queue(tm_udp_session *s, const uint8_t *data, size_t len) {
         s->outq = tm_xrealloc(s->outq, ncap);
         s->outq_cap = ncap;
     }
-    memcpy(s->outq + s->outq_len, data, len);
-    s->outq_len += len;
+    wr_u32(s->outq + s->outq_len, (uint32_t)len);
+    memcpy(s->outq + s->outq_len + 4u, data, len);
+    s->outq_len += 4u + len;
+    s->outq_packets++;
     pump_out(s);
 }
 
@@ -72,14 +86,19 @@ static void session_queue(tm_udp_session *s, const uint8_t *data, size_t len) {
 static void pump_out(tm_udp_session *s) {
     if (s->closing || s->inflight) return;
     while (s->outq_off < s->outq_len) {
-        int w = SSL_write(s->ssl, s->outq + s->outq_off,
-                          (int)(s->outq_len - s->outq_off));
+        if (s->outq_len - s->outq_off < 4u) return;
+        uint32_t plen = rd_u32(s->outq + s->outq_off);
+        if ((size_t)plen > s->outq_len - s->outq_off - 4u) return;
+        int w = SSL_write(s->ssl, s->outq + s->outq_off + 4u, (int)plen);
         if (w <= 0) {
             int e = SSL_get_error(s->ssl, w);
             if (e == SSL_ERROR_WANT_READ || e == SSL_ERROR_WANT_WRITE) break;
             return;
         }
-        s->outq_off += (size_t)w;
+        if ((uint32_t)w != plen) return;
+        s->outq_off += 4u + plen;
+        if (s->outq_packets) s->outq_packets--;
+        break; /* exactly one DTLS application record per envelope */
     }
     if (s->outq_off == s->outq_len) { s->outq_len = 0; s->outq_off = 0; }
     uint8_t chunk[TM_DTLS_BUF];
@@ -150,17 +169,20 @@ static void flow_unlink(tm_tunnel *tun, tm_udp_flow *f) {
     }
 }
 
+static void flow_free_cb(uv_handle_t *h) {
+    free(h->data);
+}
+
 void tm_udp_flow_expire(tm_broker *b, tm_udp_flow *f) {
     if (!f) return;
     tm_tunnel *tun = f->tun;
     if (f->idle_timer.data) {
         uv_timer_stop(&f->idle_timer);
         if (!uv_is_closing((uv_handle_t *)&f->idle_timer))
-            uv_close((uv_handle_t *)&f->idle_timer, NULL);
+            uv_close((uv_handle_t *)&f->idle_timer, flow_free_cb);
     }
     flow_unlink(tun, f);
     b->udp_flow_expired++;
-    free(f);
 }
 
 static void flow_idle_cb(uv_timer_t *t) {
@@ -217,6 +239,21 @@ static bool tunnel_pkt_limit(tm_broker *b, tm_tunnel *tun) {
 /* session close / create                                              */
 /* ------------------------------------------------------------------ */
 
+static void session_maybe_free(tm_udp_session *s) {
+    if (!s->closing || s->inflight || !s->timer_closed) return;
+    if (s->ssl) SSL_free(s->ssl);
+    BIO_free(s->rbio);
+    BIO_free(s->wbio);
+    free(s->outq);
+    free(s);
+}
+
+static void session_timer_closed(uv_handle_t *h) {
+    tm_udp_session *s = (tm_udp_session *)h->data;
+    s->timer_closed = true;
+    session_maybe_free(s);
+}
+
 void tm_udp_session_close(tm_broker *b, tm_udp_session *s) {
     if (!s || s->closing) return;
     s->closing = true;
@@ -237,12 +274,8 @@ void tm_udp_session_close(tm_broker *b, tm_udp_session *s) {
         s->tun = NULL;
     }
     uv_timer_stop(&s->timer);
-    if (!uv_is_closing((uv_handle_t *)&s->timer)) uv_close((uv_handle_t *)&s->timer, NULL);
-    if (s->ssl) { SSL_free(s->ssl); s->ssl = NULL; }
-    if (s->rbio) { BIO_free(s->rbio); s->rbio = NULL; }
-    if (s->wbio) { BIO_free(s->wbio); s->wbio = NULL; }
-    free(s->outq);
-    free(s);
+    if (!uv_is_closing((uv_handle_t *)&s->timer))
+        uv_close((uv_handle_t *)&s->timer, session_timer_closed);
 }
 
 /* create a DTLS server session for a new peer address */
@@ -255,16 +288,11 @@ static tm_udp_session *session_create(tm_broker *b, tm_tunnel *tun,
     s->last_rx_ms = tm_now_ms();
     s->ssl = SSL_new(b->dtls_ctx);
     if (!s->ssl) { free(s); return NULL; }
-    s->rbio = BIO_new(BIO_s_mem());
-    s->wbio = BIO_new(BIO_s_mem());
-    if (!s->rbio || !s->wbio) {
-        if (s->rbio) BIO_free(s->rbio);
-        if (s->wbio) BIO_free(s->wbio);
+    if (tm_dtls_attach_bio_pair(s->ssl, &s->rbio, &s->wbio) != TM_OK) {
         SSL_free(s->ssl);
         free(s);
         return NULL;
     }
-    SSL_set_bio(s->ssl, s->rbio, s->wbio);
     SSL_set_accept_state(s->ssl);
     uv_timer_init(b->loop, &s->timer);
     s->timer.data = s;
@@ -309,10 +337,9 @@ static void forward_to_peer(tm_broker *b, tm_tunnel *tun, tm_udp_flow *f,
         session_queue(f->peer_session, env, elen);
         free(env);
     } else {
-        size_t elen;
-        uint8_t *env = tm_env_encode(f->src_flow_id, 0, payload, plen, &elen);
-        udp_send_raw(NULL, tun, (const struct sockaddr *)&f->src, env, elen);
-        free(env);
+        /* Open clients speak ordinary UDP; proprietary metadata never
+           changes the application datagram. */
+        udp_send_raw(NULL, tun, (const struct sockaddr *)&f->src, payload, plen);
         tun->datagrams_tx++;
         b->datagrams_tx_total++;
     }
@@ -374,15 +401,18 @@ static void peer_session_env(tm_udp_session *s, uint64_t flow_id, uint8_t flags,
 }
 
 /* handle an envelope arriving as a raw datagram (open tunnel client) */
-static void open_client_env(tm_broker *b, tm_tunnel *tun,
-                            const struct sockaddr *addr,
-                            uint64_t flow_id, const uint8_t *payload, uint32_t plen) {
+static void open_client_datagram(tm_broker *b, tm_tunnel *tun,
+                                 const struct sockaddr *addr,
+                                 const uint8_t *payload, uint32_t plen) {
     if (!tunnel_pkt_limit(b, tun)) {
         b->udp_dropped_rate_limit++;
         return;
     }
     struct sockaddr_storage peer;
-    memcpy(&peer, addr, sizeof(peer));
+    memset(&peer, 0, sizeof(peer));
+    size_t addrlen = addr->sa_family == AF_INET6 ? sizeof(struct sockaddr_in6)
+                                                 : sizeof(struct sockaddr_in);
+    memcpy(&peer, addr, addrlen);
     tm_udp_flow *f = flow_find_src(tun, addr);
     if (!f) {
         if (!rate_check(b->cfg.udp_flow_creation_rate, tm_now_ms(),
@@ -392,15 +422,21 @@ static void open_client_env(tm_broker *b, tm_tunnel *tun,
             b->udp_dropped_rate_limit++;
             return;
         }
-        f = flow_new(b, tun, false, NULL, flow_id, &peer);
+        f = flow_new(b, tun, false, NULL, 0, &peer);
     }
-    f->src_flow_id = flow_id;
     f->last_seen_ms = tm_now_ms();
     f->pkts_rx++;
     f->bytes_rx += plen;
     tun->datagrams_rx++;
     b->datagrams_rx_total++;
     forward_to_agent(b, tun, f->flow_id, payload, plen);
+}
+
+static bool looks_like_dtls(const uint8_t *data, size_t len) {
+    if (len < 13u) return false;
+    /* DTLS record content type and the DTLS 1.0/1.2 wire version family. */
+    return data[0] >= 20u && data[0] <= 23u && data[1] == 0xfe &&
+           (data[2] == 0xff || data[2] == 0xfd || data[2] == 0xfc);
 }
 
 /* process decrypted app data on a session (auth or relay) */
@@ -495,6 +531,11 @@ static void pump_in(tm_udp_session *s) {
                 pump_out(s);
                 return;
             }
+            unsigned long oe = ERR_get_error();
+            char detail[160];
+            ERR_error_string_n(oe, detail, sizeof(detail));
+            tm_log_warn(s->b->log, "udp_dtls_handshake_failed", "tunnel_id", NULL,
+                        "%s ssl_error=%d openssl=%s", s->tun->id, e, detail);
             return; /* handshake failed */
         }
     }
@@ -514,23 +555,23 @@ static void on_udp_packet(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
     const uint8_t *data = (const uint8_t *)buf->base;
     size_t len = (size_t)nread;
 
-    if (len >= TM_ENV_HDR_LEN && data[0] == 0x00) {
-        if (tun->closed) { free(buf->base); return; }
-        uint64_t flow_id; uint8_t eflags;
-        const uint8_t *payload; uint32_t plen;
-        if (tm_env_decode(data, len, &flow_id, &eflags, &payload, &plen) != TM_OK) {
-            b->protocol_errors++;
+    if (!tun->closed && !looks_like_dtls(data, len)) {
+        if (len > (size_t)b->cfg.udp_max_datagram_size) {
+            b->udp_dropped_oversize++;
             free(buf->base);
             return;
         }
-        open_client_env(b, tun, addr, flow_id, payload, plen);
+        open_client_datagram(b, tun, addr, data, (uint32_t)len);
         free(buf->base);
         return;
     }
 
     /* DTLS record: session lookup by peer addr */
     struct sockaddr_storage peer;
-    memcpy(&peer, addr, sizeof(peer));
+    memset(&peer, 0, sizeof(peer));
+    size_t addrlen = addr->sa_family == AF_INET6 ? sizeof(struct sockaddr_in6)
+                                                 : sizeof(struct sockaddr_in);
+    memcpy(&peer, addr, addrlen);
     tm_udp_session *s = NULL;
     for (tm_udp_session *c = tun->udp_sessions; c; c = c->next) {
         if (tm_addr_eq((const struct sockaddr *)&c->peer, addr)) { s = c; break; }
@@ -560,8 +601,8 @@ static void on_udp_packet(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
 
 static void udp_alloc_cb(uv_handle_t *handle, size_t suggested, uv_buf_t *buf) {
     (void)handle; (void)suggested;
-    buf->base = tm_xmalloc(TM_DEFAULT_DATAGRAM + 512u);
-    buf->len = TM_DEFAULT_DATAGRAM + 512u;
+    buf->base = tm_xmalloc(65536u);
+    buf->len = 65536u;
 }
 
 void tm_udp_start(tm_broker *b, tm_tunnel *tun) {
@@ -589,10 +630,16 @@ void tm_udp_start(tm_broker *b, tm_tunnel *tun) {
                 "%s port=%u", tun->id, (unsigned)tun->public_port);
 }
 
+static void tunnel_udp_closed(uv_handle_t *h) {
+    tm_tunnel *tun = (tm_tunnel *)h->data;
+    if (tun->deleting && --tun->close_refs == 0) free(tun);
+}
+
 void tm_udp_stop(tm_broker *b, tm_tunnel *tun) {
     if (tun->udp_open) {
         uv_udp_recv_stop(&tun->udp_sock);
-        uv_close((uv_handle_t *)&tun->udp_sock, NULL);
+        if (tun->deleting) tun->close_refs++;
+        uv_close((uv_handle_t *)&tun->udp_sock, tunnel_udp_closed);
         tun->udp_open = false;
     }
     while (tun->udp_sessions) tm_udp_session_close(b, tun->udp_sessions);

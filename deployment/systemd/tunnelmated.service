@@ -1,0 +1,33 @@
+[Unit]
+Description=TunnelMate C data-plane broker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tunnelmate
+Group=tunnelmate
+RuntimeDirectory=tunnelmate
+RuntimeDirectoryMode=0750
+StateDirectory=tunnelmate
+StateDirectoryMode=0750
+ExecStart=/usr/local/sbin/tunnelmated -c /etc/tunnelmate/broker.conf
+Restart=on-failure
+RestartSec=2s
+TimeoutStopSec=15s
+LimitNOFILE=65536
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+ReadWritePaths=/run/tunnelmate /var/lib/tunnelmate
+
+[Install]
+WantedBy=multi-user.target

@@ -1,6 +1,7 @@
 #include "peer.h"
 #include "tunnelmate/crypto.h"
 #include "tunnelmate/net.h"
+#include "tunnelmate/tls.h"
 
 /* Per-session TCP relay for closed tunnels. A local consumer connection is
    mapped one-to-one onto a broker connection that authenticates with the
@@ -15,42 +16,31 @@ static void sess_unlink(tm_peer *p, tm_psess *s) {
     }
 }
 
-static void psess_finish_close(tm_peer *p, tm_psess *s) {
-    uv_timer_stop(&s->hs_timer);
-    if (s->broker_io) { tm_io_close(s->broker_io); s->broker_io = NULL; }
-    else if (s->broker_ssl) { SSL_free(s->broker_ssl); }
-    s->broker_ssl = NULL;
-    if (s->local_io) { tm_io_close(s->local_io); s->local_io = NULL; }
-    if (!uv_is_closing((uv_handle_t *)&s->broker_sock))
-        uv_close((uv_handle_t *)&s->broker_sock, NULL);
-    if (!uv_is_closing((uv_handle_t *)&s->local_sock))
-        uv_close((uv_handle_t *)&s->local_sock, NULL);
-    if (!uv_is_closing((uv_handle_t *)&s->hs_timer))
-        uv_close((uv_handle_t *)&s->hs_timer, NULL);
-    tm_frame_reader_free(s->fr);
-    free(s->pending_buf);
-    free(s->pend_buf);
-    sess_unlink(p, s);
-    free(s);
-}
-
 static void sess_sock_closed(uv_handle_t *h) {
     tm_psess *s = (tm_psess *)h->data;
-    psess_finish_close(s->p, s);
+    if (--s->closing_refs == 0) free(s);
 }
 
 void tm_psess_close(tm_peer *p, tm_psess *s) {
     if (s->closing) return;
     s->closing = true;
     uv_timer_stop(&s->hs_timer);
-    if (s->connecting) {
-        /* broker connect in flight: its callback runs during this close;
-           free once the socket finishes closing */
-        uv_close((uv_handle_t *)&s->broker_sock, sess_sock_closed);
-        uv_close((uv_handle_t *)&s->local_sock, NULL);
-        return;
-    }
-    psess_finish_close(p, s);
+    if (s->broker_io) { tm_io_close(s->broker_io); s->broker_io = NULL; }
+    else if (s->broker_ssl) SSL_free(s->broker_ssl);
+    s->broker_ssl = NULL;
+    if (s->local_io) { tm_io_close(s->local_io); s->local_io = NULL; }
+    tm_frame_reader_free(s->fr);
+    s->fr = NULL;
+    free(s->pending_buf);
+    free(s->pend_buf);
+    sess_unlink(p, s);
+    s->closing_refs = 3;
+    s->broker_sock.data = s;
+    s->local_sock.data = s;
+    s->hs_timer.data = s;
+    uv_close((uv_handle_t *)&s->broker_sock, sess_sock_closed);
+    uv_close((uv_handle_t *)&s->local_sock, sess_sock_closed);
+    uv_close((uv_handle_t *)&s->hs_timer, sess_sock_closed);
 }
 
 /* close only once both sides have EOF'd AND every queued byte has been
@@ -87,10 +77,8 @@ static void relay_broker_read(tm_io *io, const uint8_t *data, size_t len, void *
         s->pending_len += len;
         return;
     }
-    fprintf(stderr, "DBG b_read +%zu\n", len);
     int r = tm_io_write(s->local_io, data, len);
     if (r == TM_ERR_BUSY) {
-        fprintf(stderr, "DBG b_read BUSY pend=%zu\n", s->pend_len);
         if (s->pending_len + len > s->pending_cap) {
             size_t ncap = s->pending_cap ? s->pending_cap * 2 : 16384;
             while (ncap < s->pending_len + len) ncap *= 2;
@@ -148,7 +136,6 @@ static void relay_broker_low(tm_io *io, void *arg) {
     tm_psess *s = (tm_psess *)arg;
     (void)io;
     if (s->closing) return;
-    fprintf(stderr, "DBG broker_low pend=%zu local_paused=%d\n", s->pend_len, s->local_paused);
     flush_pend(s->broker_io, &s->pend_buf, &s->pend_len, &s->pend_cap);
     if (s->pend_len) { psess_maybe_close(s); return; }
     if (s->local_eof && !s->broker_fin) {
@@ -205,7 +192,6 @@ static void relay_local_low(tm_io *io, void *arg) {
     tm_psess *s = (tm_psess *)arg;
     (void)io;
     if (s->closing) return;
-    fprintf(stderr, "DBG local_low pend=%zu broker_paused=%d\n", s->pend_len, s->broker_paused);
     flush_pend(s->local_io, &s->pending_buf, &s->pending_len, &s->pending_cap);
     if (s->pending_len) { psess_maybe_close(s); return; }
     if (s->broker_eof && !s->local_fin) {
@@ -351,6 +337,11 @@ static void broker_connected(uv_connect_t *req, int status) {
     if (status != 0) { tm_psess_close(s->p, s); return; }
     s->broker_ssl = SSL_new(s->p->tls_ctx);
     if (!s->broker_ssl) { tm_psess_close(s->p, s); return; }
+    if (tm_tls_configure_client_ssl(s->broker_ssl, s->p->cfg.broker_host,
+                                    s->p->cfg.verify_ca) != TM_OK) {
+        tm_psess_close(s->p, s);
+        return;
+    }
     /* TLS 1.2: the stream must honor half-close on the relay */
     s->broker_io = tm_io_ssl_new(s->p->loop, (uv_stream_t *)&s->broker_sock,
                                   s->broker_ssl, false, false, &(tm_io_cbs){
