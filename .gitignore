@@ -1,0 +1,5 @@
+build/
+*.log
+*.o
+*.a
+vps_credential.txt
