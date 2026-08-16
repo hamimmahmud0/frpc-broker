@@ -23,13 +23,23 @@ static void ipc_conn_free(tm_ipc_conn *pc) {
     free(pc);
 }
 
+static void ipc_conn_close_cb(uv_handle_t *h) {
+    tm_ipc_conn *pc = (tm_ipc_conn *)h->data;
+    ipc_conn_free(pc);
+}
+
+static void ipc_conn_close(tm_ipc_conn *pc) {
+    if (pc->closed) return;
+    pc->closed = true;
+    uv_close((uv_handle_t *)&pc->pipe, ipc_conn_close_cb);
+}
+
 static void ipc_write_done(uv_write_t *req, int status) {
     (void)status;
     tm_ipc_conn *pc = (tm_ipc_conn *)req->data;
     pc->writing = false;
     free(pc->data);
     pc->data = NULL;
-    if (pc->closed) ipc_conn_free(pc);
 }
 
 static void ipc_send(tm_ipc_conn *pc, const char *json) {
@@ -267,20 +277,12 @@ static void ipc_conn_read(uv_stream_t *stream, ssize_t nread, const uv_buf_t *bu
     tm_ipc_conn *pc = (tm_ipc_conn *)stream->data;
     if (nread <= 0) {
         free(buf->base);
-        if (nread < 0) {
-            if (!pc->closed) {
-                pc->closed = true;
-                if (!pc->writing) ipc_conn_free(pc);
-                else uv_close((uv_handle_t *)&pc->pipe, NULL);
-            }
-        }
+        if (nread < 0) ipc_conn_close(pc);
         return;
     }
     if (pc->b->ipc_rbuf_len + (size_t)nread > sizeof(pc->b->ipc_rbuf) - 1) {
         free(buf->base);
-        pc->closed = true;
-        if (!pc->writing) ipc_conn_free(pc);
-        else uv_close((uv_handle_t *)&pc->pipe, NULL);
+        ipc_conn_close(pc);
         return;
     }
     memcpy(pc->b->ipc_rbuf + pc->b->ipc_rbuf_len, buf->base, (size_t)nread);
@@ -321,8 +323,7 @@ static void ipc_on_conn(uv_stream_t *server, int status) {
     uv_pipe_init(b->loop, &pc->pipe, 0);
     pc->pipe.data = pc;
     if (uv_accept(server, (uv_stream_t *)&pc->pipe) != 0) {
-        uv_close((uv_handle_t *)&pc->pipe, NULL);
-        ipc_conn_free(pc);
+        uv_close((uv_handle_t *)&pc->pipe, ipc_conn_close_cb);
         return;
     }
     uv_read_start((uv_stream_t *)&pc->pipe, ipc_conn_alloc, ipc_conn_read);
