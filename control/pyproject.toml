@@ -23,6 +23,9 @@ tunnelmate-admin = "tunnelmate_api.security:bootstrap_cli"
 
 [tool.hatch.build.targets.wheel]
 packages = ["tunnelmate_api"]
+# The console's templates and static assets are part of the package, not
+# repository-only files: without them an installed wheel cannot start.
+artifacts = ["tunnelmate_api/templates/*", "tunnelmate_api/static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

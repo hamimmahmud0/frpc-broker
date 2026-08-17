@@ -44,7 +44,7 @@ if [[ ! -f /etc/tunnelmate/tunnelmate.env ]]; then
     'TUNNELMATE_ADMIN_USERNAME=operator' \
     "TUNNELMATE_ADMIN_PASSWORD=$TUNNELMATE_ADMIN_PASSWORD" \
     'TUNNELMATE_API_HOST=127.0.0.1' \
-    'TUNNELMATE_API_PORT=8000' > /etc/tunnelmate/tunnelmate.env
+    "TUNNELMATE_API_PORT=${TUNNELMATE_API_PORT:-8000}" > /etc/tunnelmate/tunnelmate.env
   chown root:tunnelmate /etc/tunnelmate/tunnelmate.env
   chmod 0640 /etc/tunnelmate/tunnelmate.env
 fi
@@ -64,7 +64,45 @@ install -o root -g root -m 0644 "$src_dir/deployment/systemd/tunnelmated.service
 install -o root -g root -m 0644 "$src_dir/deployment/systemd/tunnelmate-api.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now tunnelmated tunnelmate-api
-sleep 1
-curl --fail --silent http://127.0.0.1:8000/health/ready
-echo
-systemctl --no-pager --full status tunnelmated tunnelmate-api
+
+# ---------------------------------------------------------------------------
+# Verification. Do not hide failures: a unit that is restarting in a loop, or a
+# health check answered by some unrelated service that already owns the port,
+# must both fail the install loudly.
+# ---------------------------------------------------------------------------
+
+api_port=$(sed -n 's/^TUNNELMATE_API_PORT=//p' /etc/tunnelmate/tunnelmate.env)
+api_port=${api_port:-8000}
+
+fail() { echo "INSTALL FAILED: $*" >&2; exit 1; }
+
+for unit in tunnelmated tunnelmate-api; do
+  for _ in $(seq 30); do
+    systemctl is-active --quiet "$unit" && break
+    sleep 1
+  done
+  if ! systemctl is-active --quiet "$unit"; then
+    systemctl --no-pager --full status "$unit" >&2 || true
+    journalctl -u "$unit" -n 40 --no-pager >&2 || true
+    fail "$unit is not running"
+  fi
+done
+
+health=""
+for _ in $(seq 30); do
+  health=$(curl --fail --silent --max-time 5 "http://127.0.0.1:${api_port}/health/ready" || true)
+  [[ -n $health ]] && break
+  sleep 1
+done
+[[ -n $health ]] || fail "no response from http://127.0.0.1:${api_port}/health/ready"
+
+# Confirm the responder is actually TunnelMate. Another service holding the
+# port would otherwise answer 200 and make a broken install look healthy.
+case $health in
+  *'"broker"'*'"ok"'*) ;;
+  *) fail "port ${api_port} is answered by something that is not TunnelMate: ${health:0:200}" ;;
+esac
+
+echo "health/ready: $health"
+systemctl --no-pager --full status tunnelmated tunnelmate-api || true
+echo "TunnelMate installed. API on 127.0.0.1:${api_port}, broker control on 7000."

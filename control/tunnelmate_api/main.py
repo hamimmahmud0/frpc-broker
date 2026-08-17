@@ -43,7 +43,10 @@ from .models import (
 )
 from .security import audit, bootstrap_admin, capability_hmac, verify_capability, verify_password
 
-BASE = Path(__file__).resolve().parent.parent
+# Templates and static assets live inside the package so they ship in the
+# wheel; resolving from the package directory keeps a source checkout and an
+# installed wheel on the same path.
+BASE = Path(__file__).resolve().parent
 
 
 class APIError(Exception):

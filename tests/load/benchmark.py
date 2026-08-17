@@ -31,7 +31,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from harness import (  # noqa: E402
+from harness import (
     STREAM_BLOCK,
     BrokerProcess,
     EchoHandler,
