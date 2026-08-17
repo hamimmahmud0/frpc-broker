@@ -167,13 +167,15 @@ inside it. That is your responsibility, not something TunnelMate can check.
 
 ## CLI
 
+The SDK installs one command, for the consumer side of a closed tunnel:
+
 ```bash
-tunnelmate new       # create a tunnel
-tunnelmate start     # run the agent
-tunnelmate connect   # consume a closed tunnel
-tunnelmate announce  # publish to the registry
-tunnelmate status    # show state
+tunnelmate connect tunnel://203.0.113.10:7000/tun_ID \
+  --token-file ./token --listen 127.0.0.1:9000 --protocol tcp
 ```
+
+Publishing is done from Python, or with `curl` plus `tunnelmate-agent`
+directly — see [quickstart.md](quickstart.md).
 
 ## Handling secrets
 

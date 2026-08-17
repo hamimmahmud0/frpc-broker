@@ -100,6 +100,8 @@ installer. Example: [deployment/example.env](../deployment/example.env).
 | `TUNNELMATE_LEASE_SECONDS` | `86400` | Default lease. |
 | `TUNNELMATE_ADMIN_USERNAME` | — | Bootstrapped on start when both are set. |
 | `TUNNELMATE_ADMIN_PASSWORD` | — | Minimum 12 characters. There is no default administrator. |
+| `TUNNELMATE_SOURCE_URL` | upstream repository | Where `/llms.txt` tells readers to clone and `pip install` from. Point it at your fork if you run one. |
+| `TUNNELMATE_BROKER_CERT` | `/etc/tunnelmate/certs/broker.crt` | Certificate served at `/v1/broker-certificate` so agents can verify a self-signed deployment. Certificate only — the endpoint refuses to serve anything containing a private key. |
 
 ### Abuse limits
 

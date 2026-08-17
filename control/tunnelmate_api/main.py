@@ -1190,6 +1190,38 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         audit(app.state.db, "delete_tunnel", session["username"], tunnel_id, client_ip(request))
         return {"status": "deleted", "tunnel_id": tunnel_id}
 
+    @app.get(
+        "/v1/broker-certificate",
+        response_class=PlainTextResponse,
+        operation_id="broker_certificate",
+    )
+    async def broker_certificate() -> PlainTextResponse:
+        """The broker's transport certificate, in PEM.
+
+        Nothing is disclosed by this: the broker presents the same bytes to
+        anyone who opens a TLS connection to the control port. It exists
+        because a deployment running the default self-signed certificate is
+        otherwise unusable — the agent verifies by default, and a new user has
+        no way to obtain the CA to verify against.
+
+        Only the certificate is ever read. The private key sits beside it in
+        the same directory, so the path is fixed by configuration and never
+        taken from the request.
+        """
+        try:
+            pem = settings.broker_cert_path.read_text("utf-8")
+        except OSError:
+            raise APIError(404, "CERTIFICATE_UNAVAILABLE", "No transport certificate is published.")
+        # Guard against a misconfigured path pointing at the key: shipping a
+        # private key to the Internet would be catastrophic and silent.
+        if "PRIVATE KEY" in pem or "BEGIN CERTIFICATE" not in pem:
+            raise APIError(404, "CERTIFICATE_UNAVAILABLE", "No transport certificate is published.")
+        return PlainTextResponse(
+            pem,
+            media_type="application/x-pem-file",
+            headers={"Cache-Control": "public, max-age=300"},
+        )
+
     @app.get("/llms.txt", response_class=PlainTextResponse, operation_id="llms_txt")
     async def llms_txt(request: Request) -> PlainTextResponse:
         """Self-describing usage document, public and unauthenticated.

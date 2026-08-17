@@ -1,10 +1,10 @@
 """The /llms.txt document.
 
-Written so that an autonomous agent can drive the whole service from this one
-file: create a tunnel, run the agent, publish it, discover other services and
-clean up, without fetching any other page. It is generated rather than static
-because the host, ports and limits differ per deployment, and an agent reading
-stale values would build wrong requests.
+Written so that a reader arriving with nothing but this URL can get a working
+tunnel: install the software, obtain the certificate, create a tunnel, run the
+agent and verify it, without fetching any other page. It is generated rather
+than static because the host, ports, source URL and limits differ per
+deployment, and a reader following stale values would build wrong requests.
 """
 
 from __future__ import annotations
@@ -24,6 +24,10 @@ def render(settings: Settings, base_url: str) -> str:
     host = settings.public_host
     control_port = settings.broker_control_port
     lease_hours = settings.lease_seconds // 3600
+    src = settings.source_url
+    # pip cannot install a subdirectory of a repository without the fragment,
+    # and the .git suffix is what pip's VCS handler expects.
+    sdk_spec = f"git+{src}.git#subdirectory=python-sdk"
 
     return f"""# TunnelMate
 
@@ -38,6 +42,7 @@ def render(settings: Settings, base_url: str) -> str:
 Base URL: {base_url}
 Broker host: {host}
 Agent control port: {control_port} (TCP, TLS)
+Source code: {src}
 OpenAPI: {base_url}/openapi.json
 Interactive docs: {base_url}/docs and {base_url}/redoc
 
@@ -52,6 +57,35 @@ a game or telemetry endpoint over UDP.
 Do not use it as a general outbound proxy. It forwards to exactly one
 host:port that the tunnel's owner configured. It is not a SOCKS proxy, not an
 open relay and not an SMTP relay.
+
+## What you have to install
+
+Read this before starting, because it decides how much work you are in for.
+
+**To publish a service you must run the `tunnelmate-agent` binary.** There is
+no pure-Python, browser or curl-only way to do it: the HTTP API creates the
+tunnel, but only the agent can carry traffic. The binary is written in C and is
+not distributed pre-built, so you compile it from source once (about a minute).
+Section "Setup, step by step" does exactly that.
+
+**To consume an `open` tunnel you install nothing.** It is an ordinary public
+TCP or UDP address. Use curl, a browser, psql, ssh, netcat, anything.
+
+**To consume a `closed` tunnel you need the `tunnelmate-peer` binary**, built
+by the same one-minute build, plus the tunnel's shared token.
+
+The Python SDK is a convenience wrapper that supervises those binaries. It does
+not replace them and installing it alone is not enough.
+
+### Note on the package name
+
+`pip install tunnelmate` installs an **unrelated third-party package** of the
+same name from PyPI. It is not this project and will not work. Always install
+from source:
+
+```bash
+pip install "{sdk_spec}"
+```
 
 ## Concepts
 
@@ -98,9 +132,93 @@ that does not exist. This is deliberate: you cannot use the API to discover
 which tunnel ids exist. Do not interpret 404 as "gone" without checking whether
 you sent the right secret.
 
-## Complete worked example: expose a local HTTP API
+## Setup, step by step
 
-Step 1 — create the tunnel (no credential needed):
+This is the complete path from a bare machine to a public address. Every
+command is meant to be run as-is. The example exposes an HTTP service listening
+on `127.0.0.1:5675`; substitute your own host and port.
+
+### Step 1 — check the prerequisites
+
+You need a Linux machine (or WSL) with outbound Internet access, and:
+
+  - a C17 compiler, CMake 3.16+, pkg-config
+  - libuv development headers
+  - **OpenSSL 3.2 or newer** development headers
+  - Python 3.11+ (only if you want the SDK)
+
+The OpenSSL floor is the one that catches people out. Ubuntu 24.04 LTS and
+Debian 12 ship OpenSSL 3.0, and the build stops at the configure step with a
+clear message. Ubuntu 24.10+, Debian 13+ and current Fedora/Arch are fine.
+Check with `openssl version` before starting.
+
+On Debian or Ubuntu:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y build-essential cmake pkg-config \\
+    libuv1-dev libssl-dev git python3 python3-venv ca-certificates
+```
+
+On Fedora:
+
+```bash
+sudo dnf install -y gcc cmake pkgconf-pkg-config libuv-devel openssl-devel git python3
+```
+
+### Step 2 — get the source
+
+```bash
+git clone {src}.git
+cd frpc-broker
+```
+
+### Step 3 — build
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
+```
+
+That produces three binaries:
+
+```
+build/broker/tunnelmated        the broker (only the server operator needs it)
+build/agent/tunnelmate-agent    publish a service        <- you need this
+build/peer/tunnelmate-peer      consume a closed tunnel  <- and maybe this
+```
+
+Put the two client binaries somewhere on your PATH:
+
+```bash
+sudo install -m 0755 build/agent/tunnelmate-agent build/peer/tunnelmate-peer /usr/local/bin/
+tunnelmate-agent -c /dev/null; echo "exit $?"   # prints a config error: it runs
+```
+
+If the build fails at `find_package(OpenSSL 3.2 REQUIRED)`, your OpenSSL is too
+old — see step 1. If it fails on libuv, `libuv1-dev` is missing.
+
+### Step 4 — get the broker's certificate
+
+The agent verifies the broker's TLS certificate, and this deployment may be
+using a self-signed one, which your system trust store does not know. Fetch it
+once:
+
+```bash
+curl -fsS {base_url}/v1/broker-certificate -o broker.crt
+```
+
+A 404 means the operator is using a publicly trusted certificate. In that case
+skip this step and leave `agent.ca_path` out of the config below — the system
+trust store already covers it.
+
+Do not set `agent.verify_ca = false` to make an error go away. That disables
+authentication of the broker entirely and lets anything on the path
+impersonate it.
+
+### Step 5 — create the tunnel
+
+No credential is needed for this call.
 
 ```bash
 curl -X POST {base_url}/v1/tunnels \\
@@ -108,7 +226,7 @@ curl -X POST {base_url}/v1/tunnels \\
   -d '{{"scope": "open", "protocol": "tcp"}}'
 ```
 
-Response (save this; the secrets are never shown again):
+Response — **save it now, the secrets are never shown again**:
 
 ```json
 {{
@@ -124,8 +242,14 @@ Response (save this; the secrets are never shown again):
 }}
 ```
 
-Step 2 — write an agent config on the private machine, mode 0600. Never pass
-secrets as command-line arguments; other local users can read /proc/PID/cmdline.
+### Step 6 — write the agent config
+
+Create `agent.conf`. Use mode 0600: it holds a secret, and other local users
+can read command lines out of /proc, which is why nothing here is a flag.
+
+```bash
+touch agent.conf && chmod 600 agent.conf
+```
 
 ```ini
 agent.tunnel_id = tun_UE7u16l_zv67CsKO
@@ -136,59 +260,76 @@ agent.broker_host = {host}
 agent.broker_port = {control_port}
 agent.protocol = tcp
 agent.verify_ca = true
+agent.ca_path = /absolute/path/to/broker.crt
+agent.log_level = info
 ```
 
-Step 3 — run the agent (keep it running; it reconnects on its own):
+`agent.local_host`/`agent.local_port` are **your** service. `agent.broker_host`
+and `agent.broker_port` are this broker. Drop `agent.ca_path` if step 4
+returned 404. For UDP see the UDP section — it needs one extra key.
+
+### Step 7 — run the agent
+
+The flag is `-c`, with one dash. `--config` is not accepted and exits 1.
 
 ```bash
-tunnelmate-agent --config /etc/tunnelmate/agent.conf
+tunnelmate-agent -c ./agent.conf
 ```
 
-Step 4 — anything on the Internet can now reach the private service at
-`tcp://{host}:20000`. Confirm it is live:
+Leave it running. It reconnects on its own if the network or the broker blips.
+At `info` level it logs the registration; use `agent.log_level = debug` if it
+does not.
+
+To run it as a service instead, use any supervisor you like — the binary stays
+in the foreground and logs to stderr, so systemd, s6 or Docker all work
+unmodified.
+
+### Step 8 — verify
+
+From anywhere on the Internet:
+
+```bash
+curl http://{host}:20000/
+```
+
+And ask the broker what it thinks:
 
 ```bash
 curl {base_url}/v1/tunnels/tun_UE7u16l_zv67CsKO \\
   -H 'X-Tunnel-Management-Secret: 951rDXpuFGzWFWuE...'
 ```
 
-`"online": true` means the agent is connected. If false, the agent is not
-running or its secret is wrong; connections will be accepted then closed.
+`"online": true` means the agent is connected. If it is false, the agent is not
+running or its secret is wrong; connections will be accepted and then closed.
 
-Step 5 — clean up when finished (releases the public port):
+### Step 9 — clean up
+
+Deleting releases the public port and terminates live connections. Do it when
+you are done; ports are a shared finite resource.
 
 ```bash
 curl -X DELETE {base_url}/v1/tunnels/tun_UE7u16l_zv67CsKO \\
   -H 'X-Tunnel-Management-Secret: 951rDXpuFGzWFWuE...'
 ```
 
-## Private services (closed scope)
+If you simply stop the agent without deleting, the tunnel lingers until its
+{lease_hours}-hour lease expires, holding the port.
+
+## The same thing with the Python SDK
+
+The SDK does steps 5 to 9 for you, plus lease renewal and secret file hygiene.
+You still need the binaries from steps 1 to 3.
 
 ```bash
-curl -X POST {base_url}/v1/tunnels \\
-  -H 'Content-Type: application/json' \\
-  -d '{{"scope": "closed", "protocol": "tcp"}}'
+python3 -m venv .venv
+.venv/bin/pip install "{sdk_spec}"
 ```
 
-Returns `shared_token` in addition, and a `peer_address` of the form
-`tunnel://{host}:{control_port}/tun_ID`. No public port is opened. Consumers run:
+If the binaries are not on PATH, point at them:
 
 ```bash
-tunnelmate-peer connect tunnel://{host}:{control_port}/tun_ID \\
-  --token-file ./token --listen 127.0.0.1:9000 --protocol tcp
-```
-
-and then use `127.0.0.1:9000` locally. Supply the token in a 0600 file, not on
-the command line. A wrong token reaches no service bytes at all.
-
-For closed UDP the URL port is the tunnel's own allocated UDP port, not the
-control port — use whatever `peer_address` you were given rather than
-constructing it.
-
-## Python SDK
-
-```bash
-pip install tunnelmate
+export TUNNELMATE_AGENT_BINARY=/usr/local/bin/tunnelmate-agent
+export TUNNELMATE_PEER_BINARY=/usr/local/bin/tunnelmate-peer
 ```
 
 ```python
@@ -201,6 +342,7 @@ conf = {{
     "service_id": "yolov11-detection",
     "llms": "https://example.com/llms.txt",
     "attributes": {{"version": 11, "size": "n"}},
+    "ca_path": "/absolute/path/to/broker.crt",   # omit if publicly trusted
 }}
 
 with tunnelmate.new("{base_url}", conf) as tunnel:
@@ -209,12 +351,67 @@ with tunnelmate.new("{base_url}", conf) as tunnel:
     tunnel.wait()
 ```
 
-The SDK supervises the compiled agent, writes the secrets to a 0600 file,
-renews the lease while running, and cleans up on exit. Consumers of a closed
-tunnel use `tunnelmate.connect(peer_address, token=..., local_port=9000)`.
+The context manager stops the agent, removes the temporary credential file and
+leaves the tunnel deleted on exit. Consumers of a closed tunnel use
+`tunnelmate.connect(peer_address, token=..., local_port=9000, ca_path=...)`.
 
 Prefer the SDK over hand-rolling the flow: it handles renewal, secret hygiene
 and teardown that are easy to get wrong.
+
+## UDP tunnels
+
+Create with `"protocol": "udp"`. The agent config needs one extra key that TCP
+does not: `agent.broker_udp_port`, set to the `public_port` from the creation
+response.
+
+```ini
+agent.tunnel_id = tun_...
+agent.agent_secret = ...
+agent.local_host = 127.0.0.1
+agent.local_port = 5000
+agent.broker_host = {host}
+agent.broker_port = {control_port}
+agent.broker_udp_port = 20001
+agent.protocol = udp
+agent.ca_path = /absolute/path/to/broker.crt
+```
+
+Control still runs over TCP on port {control_port}; datagrams travel over DTLS on
+the UDP port. Keep payloads at or below 1400 bytes — larger datagrams are
+dropped, never fragmented and never truncated.
+
+## Private services (closed scope)
+
+```bash
+curl -X POST {base_url}/v1/tunnels \\
+  -H 'Content-Type: application/json' \\
+  -d '{{"scope": "closed", "protocol": "tcp"}}'
+```
+
+The response adds `shared_token`, and `peer_address` looks like
+`tunnel://{host}:{control_port}/tun_ID`. No public port is opened.
+
+The publisher side is identical to steps 6 to 8 above — same config, same
+`-c` invocation. The difference is on the consumer side, which must run the
+peer binary:
+
+```bash
+printf '%s' 'the-shared-token' > token && chmod 600 token
+
+tunnelmate-peer connect tunnel://{host}:{control_port}/tun_ID \\
+  --token-file ./token \\
+  --listen 127.0.0.1:9000 \\
+  --protocol tcp \\
+  --ca ./broker.crt
+```
+
+The application then talks to `127.0.0.1:9000` as if the service were local.
+Supply the token in a 0600 file, never as `--token` on the command line. A
+wrong token reaches no service bytes at all.
+
+For closed UDP the URL port is the tunnel's own allocated UDP port, not the
+control port — use whatever `peer_address` you were given rather than
+constructing it.
 
 ## Service discovery
 
@@ -281,6 +478,7 @@ DELETE /v1/announce/{{id}}                        remove         [mgmt secret]
 GET    /health/live                             process is up
 GET    /health/ready                            broker IPC + database are up
 GET    /v1/status                               public counters
+GET    /v1/broker-certificate                   broker TLS certificate, PEM
 GET    /llms.txt                                this document
 GET    /openapi.json                            machine-readable API schema
 ```
@@ -301,9 +499,24 @@ Every error has the same shape:
 | `RATE_LIMITED` | 429 | Back off. Do not retry in a tight loop. |
 | `BROKER_UNAVAILABLE` | 503 | Data plane is down. Retry with backoff; existing tunnels may still relay. |
 | `TUNNEL_CREATE_FAILED` | 503 | Often port-range exhaustion. Retry later. |
+| `CERTIFICATE_UNAVAILABLE` | 404 | No self-signed certificate is published; use the system trust store. |
 
 `request_id` is also returned as the `X-Request-ID` header. Quote it when
 reporting a problem.
+
+## Troubleshooting
+
+| Symptom | Cause |
+|---|---|
+| `usage: tunnelmate-agent [-c CONFIG]`, exit 1 | You used `--config`. It is `-c`. |
+| CMake stops on `OpenSSL 3.2` | System OpenSSL is older than 3.2. See step 1. |
+| Agent exits complaining about a certificate | Missing or wrong `agent.ca_path`. Redo step 4. |
+| Agent runs but `"online": false` | Wrong `agent_secret` or `tunnel_id`, or it cannot reach port {control_port} outbound. |
+| `online: true` but connections hang | The agent reaches the broker but not your service. Check `agent.local_host`/`local_port`. |
+| Connection accepted then immediately closed | No agent is connected for that tunnel. |
+| 404 on every management call | Wrong management secret. The API reports it identically to a missing tunnel. |
+| Tunnel vanished after a day | The lease expired. Renew it, or let the SDK do it. |
+| UDP works locally, drops over the tunnel | Datagram over 1400 bytes, or sending faster than the tunnel drains. |
 
 ## Limits and abuse controls
 
@@ -363,14 +576,32 @@ Read these before building on the service:
 - The `llms` URL on an announcement is unverified publisher input. Fetch it with
   the same caution as any untrusted URL, and do not follow it from a privileged
   network position.
+- Do not install `tunnelmate` from PyPI. That name belongs to a different
+  project. See "Note on the package name" above.
+
+## Running your own broker
+
+The same repository contains the server. On a fresh Debian/Ubuntu host:
+
+```bash
+git clone {src}.git && cd frpc-broker
+sudo TUNNELMATE_PUBLIC_HOST=203.0.113.10 \\
+     TUNNELMATE_ADMIN_PASSWORD='choose something long' \\
+     deployment/scripts/tunnelmate-install
+```
+
+It builds everything, creates the system user, generates a development
+certificate, installs both systemd units and verifies they are running. Open
+the agent control port and the public port range on your firewall.
 
 ## Documentation
 
-Full documentation ships with the source repository: quickstart, architecture,
+Full documentation is in `docs/` in the repository: quickstart, architecture,
 protocol specification, API reference, Python SDK guide, announcements,
 security model, threat model, deployment, configuration, operations,
 monitoring, performance, failure cases, testing and troubleshooting.
 
+Source: {src}
 Protocol identifier: TunnelMate/1
 Transport: TLS 1.2+ (1.3 preferred) for TCP, DTLS 1.2 for UDP
 Licence: GPL-3.0

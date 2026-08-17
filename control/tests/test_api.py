@@ -97,6 +97,8 @@ def settings(root: Path) -> Settings:
         max_attribute_keys=128,
         admin_username=None,
         admin_password=None,
+        source_url="https://example.test/tunnelmate",
+        broker_cert_path=root / "broker.crt",
     )
 
 

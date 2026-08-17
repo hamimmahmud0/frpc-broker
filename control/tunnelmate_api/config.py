@@ -30,6 +30,14 @@ class Settings:
     max_attribute_keys: int
     admin_username: str | None
     admin_password: str | None
+    # Where the software itself lives. /llms.txt has to tell a reader how to
+    # obtain the agent binary and the SDK, and a fork or mirror is a different
+    # URL, so it is deployment configuration rather than a constant.
+    source_url: str
+    # The broker's transport certificate. Public by definition — a TLS server
+    # hands it to anyone who connects — and agents need it when the deployment
+    # uses a self-signed one, which is the default after install.
+    broker_cert_path: Path
     # Bounded in-memory metric history for the console: interval x history is
     # the visible window, and the whole series is a few hundred KiB.
     metrics_interval_seconds: int = 5
@@ -62,6 +70,12 @@ class Settings:
             max_attribute_keys=int(os.getenv("TUNNELMATE_MAX_ATTRIBUTE_KEYS", "128")),
             admin_username=os.getenv("TUNNELMATE_ADMIN_USERNAME"),
             admin_password=os.getenv("TUNNELMATE_ADMIN_PASSWORD"),
+            source_url=os.getenv(
+                "TUNNELMATE_SOURCE_URL", "https://github.com/hamimmahmud0/frpc-broker"
+            ).rstrip("/"),
+            broker_cert_path=Path(
+                os.getenv("TUNNELMATE_BROKER_CERT", "/etc/tunnelmate/certs/broker.crt")
+            ),
             metrics_interval_seconds=int(os.getenv("TUNNELMATE_METRICS_INTERVAL", "5")),
             metrics_history=int(os.getenv("TUNNELMATE_METRICS_HISTORY", "240")),
         )

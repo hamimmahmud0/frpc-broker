@@ -87,8 +87,10 @@ Save the returned secrets — they are shown once. Write an agent config with
 mode 0600 (see [configuration.md](configuration.md)) and run:
 
 ```bash
-tunnelmate-agent --config /etc/tunnelmate/agent.conf
+tunnelmate-agent -c /etc/tunnelmate/agent.conf
 ```
+
+The flag is `-c`, with one dash; `--config` is rejected.
 
 ## UDP
 

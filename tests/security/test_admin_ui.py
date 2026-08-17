@@ -309,3 +309,98 @@ def test_llms_txt_has_no_unresolved_placeholders(client: TestClient) -> None:
     # {id} is an intentional path placeholder; nothing else should survive.
     leftover = {m for m in re.findall(r"\{[a-z_]+\}", body)} - {"{id}"}
     assert not leftover, leftover
+
+
+def test_llms_txt_says_where_the_software_comes_from(client: TestClient) -> None:
+    """"Install it" is useless without naming what to install and from where.
+
+    Every route into the product has to be reachable from this file: the
+    repository, the build, the binary that actually carries traffic, and the
+    pip specifier. A reader with only this URL must not have to guess.
+    """
+    body = client.get("/llms.txt").text
+
+    assert "git clone" in body
+    assert "cmake" in body
+    assert "#subdirectory=python-sdk" in body
+
+    # The build prerequisites, because the compile fails without them.
+    for fragment in ("libuv1-dev", "libssl-dev", "OpenSSL 3.2"):
+        assert fragment in body, fragment
+
+    # The binaries, named, so the reader knows what the build produced.
+    for fragment in ("tunnelmate-agent", "tunnelmate-peer", "tunnelmated"):
+        assert fragment in body, fragment
+
+
+def test_llms_txt_warns_off_the_pypi_name_collision(client: TestClient) -> None:
+    """`pip install tunnelmate` fetches an unrelated project of the same name.
+
+    Following that instruction installs a stranger's code, which is worse than
+    a missing instruction, so the document must say so explicitly rather than
+    merely omitting it.
+    """
+    body = client.get("/llms.txt").text
+    assert "pip install tunnelmate" in body
+    assert "unrelated third-party package" in body
+    # And it must never be the recommended form: every install line is the
+    # source specifier.
+    for line in body.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("pip install ") and "subdirectory=python-sdk" not in stripped:
+            assert stripped == "pip install tunnelmate", stripped
+
+
+def test_llms_txt_uses_the_flag_the_agent_actually_accepts(client: TestClient) -> None:
+    """The agent takes -c; --config makes it print usage and exit 1."""
+    body = client.get("/llms.txt").text
+    assert "tunnelmate-agent -c " in body
+    assert "tunnelmate-agent --config" not in body
+
+
+def test_llms_txt_covers_certificate_trust_and_udp_extra_key(client: TestClient) -> None:
+    """The two things that silently break a first attempt.
+
+    A self-signed deployment fails verification unless the reader fetches the
+    certificate, and a UDP agent needs `agent.broker_udp_port`, which has no
+    TCP counterpart and so is easy to leave out.
+    """
+    body = client.get("/llms.txt").text
+    assert "/v1/broker-certificate" in body
+    assert "agent.ca_path" in body
+    assert "agent.broker_udp_port" in body
+
+
+def test_broker_certificate_is_public_when_present(tmp_path: Path, client: TestClient) -> None:
+    """A TLS server hands this to anyone who connects; publishing adds nothing."""
+    cert = tmp_path / "broker.crt"
+    cert.write_text("-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n")
+    client.app.state.settings.broker_cert_path = cert
+
+    response = client.get("/v1/broker-certificate")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/x-pem-file")
+    assert "BEGIN CERTIFICATE" in response.text
+
+
+def test_broker_certificate_never_serves_a_private_key(tmp_path: Path, client: TestClient) -> None:
+    """A path typo pointing at broker.key would publish the key to the Internet.
+
+    The check is on content rather than filename because that is what actually
+    determines the damage.
+    """
+    key = tmp_path / "broker.key"
+    key.write_text("-----BEGIN PRIVATE KEY-----\nMIIE\n-----END PRIVATE KEY-----\n")
+    client.app.state.settings.broker_cert_path = key
+
+    response = client.get("/v1/broker-certificate")
+    assert response.status_code == 404
+    assert "PRIVATE KEY" not in response.text
+
+
+def test_broker_certificate_absent_is_a_clean_404(tmp_path: Path, client: TestClient) -> None:
+    """A publicly trusted deployment has nothing to publish, and must not 500."""
+    client.app.state.settings.broker_cert_path = tmp_path / "does-not-exist.crt"
+    response = client.get("/v1/broker-certificate")
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "CERTIFICATE_UNAVAILABLE"
