@@ -38,16 +38,22 @@ static void udp_queue(tm_peer *p, const uint8_t *data, size_t len) {
     if (p->udp_outq_packets >= 256u || len > UINT32_MAX ||
         queued + 4u + len > max_bytes) return;
     if (p->udp_outq_len + 4u + len > p->udp_outq_cap) {
-        size_t ncap = p->udp_outq_cap ? p->udp_outq_cap * 2 : 4096;
-        while (ncap < p->udp_outq_len + 4u + len) ncap *= 2;
+        /* Compact before sizing. The admission check above bounds the
+           *unsent* bytes, but growth was computed from the absolute length,
+           so under sustained load the capacity doubled without limit (a
+           128 MiB region in practice) even though live data stayed small. */
         if (p->udp_outq_off) {
             memmove(p->udp_outq, p->udp_outq + p->udp_outq_off,
                     p->udp_outq_len - p->udp_outq_off);
             p->udp_outq_len -= p->udp_outq_off;
             p->udp_outq_off = 0;
         }
-        p->udp_outq = tm_xrealloc(p->udp_outq, ncap);
-        p->udp_outq_cap = ncap;
+        if (p->udp_outq_len + 4u + len > p->udp_outq_cap) {
+            size_t ncap = p->udp_outq_cap ? p->udp_outq_cap * 2 : 4096;
+            while (ncap < p->udp_outq_len + 4u + len) ncap *= 2;
+            p->udp_outq = tm_xrealloc(p->udp_outq, ncap);
+            p->udp_outq_cap = ncap;
+        }
     }
     wr_u32(p->udp_outq + p->udp_outq_len, (uint32_t)len);
     memcpy(p->udp_outq + p->udp_outq_len + 4u, data, len);
@@ -122,9 +128,16 @@ static uint64_t flow_id_new(tm_peer *p) {
 
 /* ---------------------- inbound paths ------------------------------- */
 
+/* One reusable receive buffer per process: the loop is single threaded and each
+   datagram is fully consumed inside its callback, so this replaces a 64 KiB
+   malloc/free per packet. That churn held hundreds of MiB of allocator arenas
+   at high packet rates. Sized for DTLS handshake flights, which exceed the
+   configured application datagram limit. */
 static void udp_alloc_cb(uv_handle_t *handle, size_t suggested, uv_buf_t *buf) {
-    (void)handle; (void)suggested;
-    buf->base = tm_xmalloc(65536u);
+    (void)suggested;
+    tm_peer *p = (tm_peer *)handle->data;
+    if (!p->udp_rxbuf) p->udp_rxbuf = tm_xmalloc(65536u);
+    buf->base = (char *)p->udp_rxbuf;
     buf->len = 65536u;
 }
 
@@ -135,16 +148,16 @@ static void local_recv_cb(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
     tm_peer *p = (tm_peer *)handle->data;
     /* nread==0 with an address is a legal zero-length datagram from the local
        application; only a NULL address means "nothing more to read". */
-    if (nread < 0 || (nread == 0 && addr == NULL)) { free(buf->base); return; }
-    if (p->udp_closing || !p->udp_authed) { free(buf->base); return; }
+    if (nread < 0 || (nread == 0 && addr == NULL)) return;
+    if (p->udp_closing || !p->udp_authed) return;
     size_t plen = (size_t)nread;
-    if (plen > (size_t)p->cfg.udp_max_datagram_size) { free(buf->base); return; }
+    if (plen > (size_t)p->cfg.udp_max_datagram_size) return;
 
     tm_pflow *f = flow_find_src(p, addr);
     if (!f) {
         long long nf = 0;
         for (tm_pflow *x = p->udp_flows; x; x = x->next) nf++;
-        if (nf >= p->cfg.udp_max_flows) { free(buf->base); return; }
+        if (nf >= p->cfg.udp_max_flows) return;
         f = tm_xcalloc(1, sizeof(*f));
         f->flow_id = flow_id_new(p);
         size_t addrlen = addr->sa_family == AF_INET6 ? sizeof(struct sockaddr_in6)
@@ -160,7 +173,6 @@ static void local_recv_cb(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
     size_t elen;
     uint8_t *env = tm_env_encode(f->flow_id, 0, (const uint8_t *)buf->base,
                                  (uint32_t)plen, &elen);
-    free(buf->base);
     udp_queue(p, env, elen);
     free(env);
 }
@@ -210,10 +222,9 @@ static void udp_recv_cb(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
                         const struct sockaddr *addr, unsigned flags) {
     (void)addr; (void)flags;
     tm_peer *p = (tm_peer *)handle->data;
-    if (nread <= 0) { free(buf->base); return; }
-    if (p->udp_closing) { free(buf->base); return; }
+    if (nread <= 0) return;
+    if (p->udp_closing) return;
     BIO_write(p->udp_rbio, buf->base, (int)nread);
-    free(buf->base);
 
     if (!SSL_is_init_finished(p->udp_ssl)) {
         int r = SSL_connect(p->udp_ssl);

@@ -129,6 +129,8 @@ struct tm_agent_app {
     uint8_t *udp_outq;
     size_t udp_outq_len, udp_outq_cap, udp_outq_off;
     size_t udp_outq_packets;
+    /* Reusable UDP receive scratch buffer; see udp.c. */
+    uint8_t *udp_rxbuf;
     tm_alflow *udp_flows;
     bool shutting_down;
 };

@@ -94,6 +94,7 @@ struct tm_tunnel {
     uint64_t next_flow_id;
     long long udp_flow_created_win_start;   /* ms */
     long long udp_flow_created_win_count;
+    size_t udp_raw_inflight;   /* uv_udp_send calls outstanding to clients */
     long long udp_pkt_win_start;            /* ms */
     long long udp_pkt_win_count;
 
@@ -104,6 +105,7 @@ struct tm_tunnel {
     /* stats */
     uint64_t rx_bytes, tx_bytes;
     uint64_t datagrams_rx, datagrams_tx;
+    uint64_t udp_bytes_rx, udp_bytes_tx;
     uint64_t streams_total;
     uint64_t conns_rejected_offline;
 
@@ -242,10 +244,17 @@ struct tm_broker {
     bool *ports_udp;
     uint16_t ports_used;
 
+    /* Single reusable UDP receive buffer. The loop is single threaded and
+       every datagram is fully consumed inside its callback, so one scratch
+       buffer replaces a 64 KiB malloc/free per packet - that churn was holding
+       hundreds of MiB of allocator arenas at high packet rates. */
+    uint8_t *udp_rxbuf;
+
     /* metrics */
     uint64_t start_ms;
     uint64_t rx_bytes_total, tx_bytes_total;
     uint64_t datagrams_rx_total, datagrams_tx_total;
+    uint64_t udp_bytes_rx, udp_bytes_tx;   /* application payload only */
     uint64_t streams_total, flows_total;
     uint64_t failed_auths;
     uint64_t protocol_errors;
@@ -257,6 +266,7 @@ struct tm_broker {
     uint64_t udp_dropped_rate_limit;
     uint64_t udp_dropped_no_flow;
     uint64_t udp_flow_expired;
+    uint64_t udp_transport_errors;
     uint64_t stream_errors;
 
     /* IPC */

@@ -103,6 +103,8 @@ struct tm_peer {
     uint8_t *udp_outq;
     size_t udp_outq_len, udp_outq_cap, udp_outq_off;
     size_t udp_outq_packets;
+    /* Reusable UDP receive scratch buffer; see udp.c. */
+    uint8_t *udp_rxbuf;
     uint64_t next_flow_id;
     tm_pflow *udp_flows;
 

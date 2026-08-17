@@ -44,16 +44,22 @@ static void udp_queue(tm_agent_app *a, const uint8_t *data, size_t len) {
     if (a->udp_outq_packets >= 256u || len > UINT32_MAX ||
         queued + 4u + len > max_bytes) return;
     if (a->udp_outq_len + 4u + len > a->udp_outq_cap) {
-        size_t ncap = a->udp_outq_cap ? a->udp_outq_cap * 2 : 4096;
-        while (ncap < a->udp_outq_len + 4u + len) ncap *= 2;
+        /* Compact before sizing. The admission check above bounds the
+           *unsent* bytes, but growth was computed from the absolute length,
+           so under sustained load the capacity doubled without limit (a
+           128 MiB region in practice) even though live data stayed small. */
         if (a->udp_outq_off) {
             memmove(a->udp_outq, a->udp_outq + a->udp_outq_off,
                     a->udp_outq_len - a->udp_outq_off);
             a->udp_outq_len -= a->udp_outq_off;
             a->udp_outq_off = 0;
         }
-        a->udp_outq = tm_xrealloc(a->udp_outq, ncap);
-        a->udp_outq_cap = ncap;
+        if (a->udp_outq_len + 4u + len > a->udp_outq_cap) {
+            size_t ncap = a->udp_outq_cap ? a->udp_outq_cap * 2 : 4096;
+            while (ncap < a->udp_outq_len + 4u + len) ncap *= 2;
+            a->udp_outq = tm_xrealloc(a->udp_outq, ncap);
+            a->udp_outq_cap = ncap;
+        }
     }
     wr_u32(a->udp_outq + a->udp_outq_len, (uint32_t)len);
     memcpy(a->udp_outq + a->udp_outq_len + 4u, data, len);
@@ -117,11 +123,27 @@ static tm_alflow *flow_find(tm_agent_app *a, uint64_t flow_id) {
     return NULL;
 }
 
+/* One reusable receive buffer per process: the loop is single threaded and each
+   datagram is fully consumed inside its callback, so this replaces a 64 KiB
+   malloc/free per packet. That churn held hundreds of MiB of allocator arenas
+   at high packet rates. Sized for DTLS handshake flights, which exceed the
+   configured application datagram limit. */
+static uint8_t *agent_rxbuf(tm_agent_app *a) {
+    if (!a->udp_rxbuf) a->udp_rxbuf = tm_xmalloc(65536u);
+    return a->udp_rxbuf;
+}
+
 static void flow_alloc_cb(uv_handle_t *handle, size_t suggested, uv_buf_t *buf) {
-    (void)handle; (void)suggested;
-    /* This callback also receives DTLS handshake flights, which can be much
-       larger than the configured application datagram MTU. */
-    buf->base = tm_xmalloc(65536u);
+    (void)suggested;
+    tm_alflow *f = (tm_alflow *)handle->data;
+    buf->base = (char *)agent_rxbuf(f->a);
+    buf->len = 65536u;
+}
+
+static void agent_alloc_cb(uv_handle_t *handle, size_t suggested, uv_buf_t *buf) {
+    (void)suggested;
+    tm_agent_app *a = (tm_agent_app *)handle->data;
+    buf->base = (char *)agent_rxbuf(a);
     buf->len = 65536u;
 }
 
@@ -131,20 +153,19 @@ static void flow_recv_cb(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
     tm_alflow *f = (tm_alflow *)handle->data;
     /* nread==0 with an address is a legal zero-length reply from the service;
        only a NULL address means "nothing more to read". */
-    if (nread < 0 || (nread == 0 && addr == NULL)) { free(buf->base); return; }
+    if (nread < 0 || (nread == 0 && addr == NULL)) return;
     tm_agent_app *a = f->a;
-    if (a->udp_closing || !a->udp_authed) { free(buf->base); return; }
+    if (a->udp_closing || !a->udp_authed) return;
     uint64_t now = tm_now_ms();
     if (now - f->pkt_win_start >= 1000) { f->pkt_win_start = now; f->pkt_win_count = 0; }
-    if (f->pkt_win_count >= a->cfg.udp_max_packets_per_flow) { free(buf->base); return; }
+    if (f->pkt_win_count >= a->cfg.udp_max_packets_per_flow) return;
     f->pkt_win_count++;
     f->last_seen_ms = now;
     size_t plen = (size_t)nread;
-    if (plen > (size_t)a->cfg.udp_max_datagram_size) { free(buf->base); return; }
+    if (plen > (size_t)a->cfg.udp_max_datagram_size) return;
     size_t elen;
     uint8_t *env = tm_env_encode(f->flow_id, 0, (const uint8_t *)buf->base,
                                  (uint32_t)plen, &elen);
-    free(buf->base);
     udp_queue(a, env, elen);
     free(env);
 }
@@ -209,10 +230,9 @@ static void udp_recv_cb(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
                         const struct sockaddr *addr, unsigned flags) {
     (void)addr; (void)flags;
     tm_agent_app *a = (tm_agent_app *)handle->data;
-    if (nread <= 0) { free(buf->base); return; }
-    if (a->udp_closing) { free(buf->base); return; }
+    if (nread <= 0) return;
+    if (a->udp_closing) return;
     BIO_write(a->udp_rbio, buf->base, (int)nread);
-    free(buf->base);
 
     if (!SSL_is_init_finished(a->udp_ssl)) {
         int r = SSL_connect(a->udp_ssl);
@@ -312,7 +332,7 @@ void tm_agent_udp_start(tm_agent_app *a) {
         return;
     }
     SSL_set_connect_state(a->udp_ssl);
-    uv_udp_recv_start(&a->udp_sock, flow_alloc_cb, udp_recv_cb);
+    uv_udp_recv_start(&a->udp_sock, agent_alloc_cb, udp_recv_cb);
     uv_timer_init(a->loop, &a->udp_timer);
     a->udp_timer.data = a;
     uv_timer_start(&a->udp_timer, flow_sweep_cb, 15000, 15000);

@@ -19,6 +19,7 @@ typedef struct {
     uv_udp_send_t req;
     uint8_t *buf;
     tm_udp_session *s;
+    tm_tunnel *tun;
 } tm_udp_send;
 
 static void pump_out(tm_udp_session *s);
@@ -30,7 +31,9 @@ static void send_done(uv_udp_send_t *req, int status) {
     (void)status;
     free(wr->buf);
     tm_udp_session *s = wr->s;
+    tm_tunnel *tun = wr->tun;
     free(wr);
+    if (tun && tun->udp_raw_inflight) tun->udp_raw_inflight--;
     if (s) {
         s->inflight = false;
         if (s->closing) session_maybe_free(s);
@@ -41,12 +44,27 @@ static void send_done(uv_udp_send_t *req, int status) {
 /* send an encrypted DTLS record (or raw envelope) from the tunnel socket */
 static void udp_send_raw(tm_udp_session *s, tm_tunnel *tun,
                          const struct sockaddr *dst, const uint8_t *buf, size_t len) {
+    /* Sends towards an internet client have no session-level inflight gate, so
+       libuv would queue them without bound whenever the kernel send buffer is
+       full - unbounded memory on the one path a remote peer can drive. Cap the
+       outstanding sends and drop past the cap, per the UDP queue policy. */
+    if (tun->udp_raw_inflight >= (size_t)tun->b->cfg.udp_queue_packets) {
+        tun->b->udp_dropped_queue_full++;
+        return;
+    }
     tm_udp_send *wr = tm_xcalloc(1, sizeof(*wr));
     wr->buf = tm_xmalloc(len);
     memcpy(wr->buf, buf, len);
     wr->s = s;
+    wr->tun = tun;
     uv_buf_t b = uv_buf_init((char *)wr->buf, (unsigned)len);
-    uv_udp_send(&wr->req, &tun->udp_sock, &b, 1, dst, send_done);
+    tun->udp_raw_inflight++;
+    if (uv_udp_send(&wr->req, &tun->udp_sock, &b, 1, dst, send_done) != 0) {
+        tun->udp_raw_inflight--;
+        tun->b->udp_transport_errors++;
+        free(wr->buf);
+        free(wr);
+    }
 }
 
 /* ------------------------------------------------------------------ */
@@ -65,15 +83,21 @@ static void session_queue(tm_udp_session *s, const uint8_t *data, size_t len) {
         return;
     }
     if (s->outq_len + 4u + len > s->outq_cap) {
-        size_t ncap = s->outq_cap ? s->outq_cap * 2 : 4096;
-        while (ncap < s->outq_len + 4u + len) ncap *= 2;
+        /* Compact before sizing. The admission check above bounds the
+           *unsent* bytes, but growth was computed from the absolute length,
+           so under sustained load the capacity doubled without limit (a
+           128 MiB region in practice) even though live data stayed small. */
         if (s->outq_off) {
             memmove(s->outq, s->outq + s->outq_off, s->outq_len - s->outq_off);
             s->outq_len -= s->outq_off;
             s->outq_off = 0;
         }
-        s->outq = tm_xrealloc(s->outq, ncap);
-        s->outq_cap = ncap;
+        if (s->outq_len + 4u + len > s->outq_cap) {
+            size_t ncap = s->outq_cap ? s->outq_cap * 2 : 4096;
+            while (ncap < s->outq_len + 4u + len) ncap *= 2;
+            s->outq = tm_xrealloc(s->outq, ncap);
+            s->outq_cap = ncap;
+        }
     }
     wr_u32(s->outq + s->outq_len, (uint32_t)len);
     memcpy(s->outq + s->outq_len + 4u, data, len);
@@ -341,7 +365,9 @@ static void forward_to_peer(tm_broker *b, tm_tunnel *tun, tm_udp_flow *f,
            changes the application datagram. */
         udp_send_raw(NULL, tun, (const struct sockaddr *)&f->src, payload, plen);
         tun->datagrams_tx++;
+        tun->udp_bytes_tx += plen;
         b->datagrams_tx_total++;
+        b->udp_bytes_tx += plen;
     }
 }
 
@@ -361,7 +387,9 @@ static void agent_session_env(tm_udp_session *s, uint64_t flow_id, uint8_t flags
     f->pkts_rx++;
     f->bytes_rx += plen;
     tun->datagrams_rx++;
+    tun->udp_bytes_rx += plen;
     b->datagrams_rx_total++;
+    b->udp_bytes_rx += plen;
     forward_to_peer(b, tun, f, payload, plen);
 }
 
@@ -396,7 +424,9 @@ static void peer_session_env(tm_udp_session *s, uint64_t flow_id, uint8_t flags,
     f->pkts_rx++;
     f->bytes_rx += plen;
     tun->datagrams_rx++;
+    tun->udp_bytes_rx += plen;
     b->datagrams_rx_total++;
+    b->udp_bytes_rx += plen;
     forward_to_agent(b, tun, f->flow_id, payload, plen);
 }
 
@@ -428,7 +458,9 @@ static void open_client_datagram(tm_broker *b, tm_tunnel *tun,
     f->pkts_rx++;
     f->bytes_rx += plen;
     tun->datagrams_rx++;
+    tun->udp_bytes_rx += plen;
     b->datagrams_rx_total++;
+    b->udp_bytes_rx += plen;
     forward_to_agent(b, tun, f->flow_id, payload, plen);
 }
 
@@ -552,8 +584,8 @@ static void on_udp_packet(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
     /* libuv reports "nothing more to read" as nread==0 with a NULL address.
        nread==0 with an address is a real, zero-length datagram, which is legal
        UDP and must be forwarded rather than dropped. */
-    if (nread < 0 || (nread == 0 && addr == NULL)) { free(buf->base); return; }
-    if (b->shutting_down || !tun->enabled) { free(buf->base); return; }
+    if (nread < 0 || (nread == 0 && addr == NULL)) return;
+    if (b->shutting_down || !tun->enabled) return;
 
     const uint8_t *data = (const uint8_t *)buf->base;
     size_t len = (size_t)nread;
@@ -561,11 +593,9 @@ static void on_udp_packet(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
     if (!tun->closed && !looks_like_dtls(data, len)) {
         if (len > (size_t)b->cfg.udp_max_datagram_size) {
             b->udp_dropped_oversize++;
-            free(buf->base);
             return;
         }
         open_client_datagram(b, tun, addr, data, (uint32_t)len);
-        free(buf->base);
         return;
     }
 
@@ -584,18 +614,16 @@ static void on_udp_packet(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
                         &tun->udp_flow_created_win_start,
                         &tun->udp_flow_created_win_count)) {
             b->udp_dropped_rate_limit++;
-            free(buf->base);
             return;
         }
         s = session_create(b, tun, &peer);
-        if (!s) { free(buf->base); return; }
+        if (!s) return;
         tm_log_debug(b->log, "udp_session_new", "tunnel_id", NULL, "%s", tun->id);
     }
     s->last_rx_ms = tm_now_ms();
     s->pkts_rx++;
     BIO_write(s->rbio, data, (int)len);
     pump_in(s);
-    free(buf->base);
 }
 
 /* ------------------------------------------------------------------ */
@@ -603,9 +631,12 @@ static void on_udp_packet(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
 /* ------------------------------------------------------------------ */
 
 static void udp_alloc_cb(uv_handle_t *handle, size_t suggested, uv_buf_t *buf) {
-    (void)handle; (void)suggested;
-    buf->base = tm_xmalloc(65536u);
-    buf->len = 65536u;
+    (void)suggested;
+    tm_tunnel *tun = (tm_tunnel *)handle->data;
+    tm_broker *b = tun->b;
+    if (!b->udp_rxbuf) b->udp_rxbuf = tm_xmalloc(TM_DTLS_BUF);
+    buf->base = (char *)b->udp_rxbuf;
+    buf->len = TM_DTLS_BUF;
 }
 
 void tm_udp_start(tm_broker *b, tm_tunnel *tun) {

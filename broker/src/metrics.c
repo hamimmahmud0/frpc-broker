@@ -18,6 +18,8 @@ static cJSON *tunnel_json(tm_tunnel *t) {
     cJSON_AddNumberToObject(o, "tx_bytes", (double)t->tx_bytes);
     cJSON_AddNumberToObject(o, "datagrams_rx", (double)t->datagrams_rx);
     cJSON_AddNumberToObject(o, "datagrams_tx", (double)t->datagrams_tx);
+    cJSON_AddNumberToObject(o, "udp_bytes_rx", (double)t->udp_bytes_rx);
+    cJSON_AddNumberToObject(o, "udp_bytes_tx", (double)t->udp_bytes_tx);
     cJSON_AddNumberToObject(o, "last_seen_ms", (double)t->last_seen_ms);
     cJSON_AddNumberToObject(o, "expires_at_ms", (double)t->expires_at_ms);
     cJSON_AddNumberToObject(o, "conns_rejected_offline",
@@ -39,6 +41,8 @@ char *tm_metrics_json(tm_broker *b, bool include_tunnels) {
     cJSON_AddNumberToObject(now, "tx_bytes_total", (double)b->tx_bytes_total);
     cJSON_AddNumberToObject(now, "datagrams_rx_total", (double)b->datagrams_rx_total);
     cJSON_AddNumberToObject(now, "datagrams_tx_total", (double)b->datagrams_tx_total);
+    cJSON_AddNumberToObject(now, "udp_bytes_rx", (double)b->udp_bytes_rx);
+    cJSON_AddNumberToObject(now, "udp_bytes_tx", (double)b->udp_bytes_tx);
     cJSON_AddNumberToObject(now, "failed_auths", (double)b->failed_auths);
     cJSON_AddNumberToObject(now, "protocol_errors", (double)b->protocol_errors);
     cJSON_AddNumberToObject(now, "agent_reconnects", (double)b->agent_reconnects);
@@ -53,6 +57,8 @@ char *tm_metrics_json(tm_broker *b, bool include_tunnels) {
     cJSON_AddNumberToObject(now, "udp_dropped_no_flow",
                             (double)b->udp_dropped_no_flow);
     cJSON_AddNumberToObject(now, "udp_flow_expired", (double)b->udp_flow_expired);
+    cJSON_AddNumberToObject(now, "udp_transport_errors",
+                            (double)b->udp_transport_errors);
     cJSON_AddNumberToObject(now, "stream_errors", (double)b->stream_errors);
     cJSON_AddItemToObject(o, "now", now);
 

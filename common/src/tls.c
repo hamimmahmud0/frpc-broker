@@ -196,6 +196,7 @@ struct tm_ssl_stream {
     size_t pq_len, pq_cap, pq_off;
     size_t ssl_retry_len;
     uint8_t inbuf[TM_SSL_INBUF_SIZE];
+    uint8_t *wscratch;   /* reusable BIO_read staging buffer */
     int last_err;
     char err_detail[224];
     bool above_low;
@@ -231,6 +232,7 @@ static void free_stream_memory(tm_ssl_stream *s) {
         BIO_free(s->wbio);
     }
     free(s->pq);
+    free(s->wscratch);
     free(s);
 }
 
@@ -333,9 +335,15 @@ static void record_tls_error(tm_ssl_stream *s, const char *where, int ssl_err) {
 static void pump_write(tm_ssl_stream *s) {
     if (s->state == TM_SS_STATE_CLOSED || s->inflight) return;
     for (;;) {
-        uint8_t *chunk = tm_xmalloc(TM_SSL_WBUF_SIZE);
-        int n = BIO_read(s->wbio, chunk, TM_SSL_WBUF_SIZE);
+        /* Read into a reusable scratch buffer, then hand the write only as many
+           bytes as the record actually occupies. Allocating a full 64 KiB per
+           record instead left hundreds of MiB sitting in allocator arenas on
+           DTLS, where a record is closer to 1.4 KiB. */
+        if (!s->wscratch) s->wscratch = tm_xmalloc(TM_SSL_WBUF_SIZE);
+        int n = BIO_read(s->wbio, s->wscratch, TM_SSL_WBUF_SIZE);
         if (n > 0) {
+            uint8_t *chunk = tm_xmalloc((size_t)n);
+            memcpy(chunk, s->wscratch, (size_t)n);
             tm_wreq *wr = tm_xcalloc(1, sizeof(*wr));
             wr->data = chunk;
             wr->s = s;
@@ -358,7 +366,6 @@ static void pump_write(tm_ssl_stream *s) {
             s->inflight = true;
             return;
         }
-        free(chunk);
         /* wbio empty: try to encrypt more plaintext */
         if (s->pq_off == s->pq_len) {
             s->pq_len = 0;
