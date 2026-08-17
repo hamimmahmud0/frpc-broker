@@ -83,6 +83,10 @@ tunnelmate-peer connect tunnel://tunnel.example.com:7000/tun_ID \
   --token-file ./token --listen 127.0.0.1:9000 --protocol tcp
 ```
 
+The [completion report](docs/completion-report.md) has the measured results:
+6 GiB transfers with matching hashes at ~10 MB broker RSS, benchmark tables,
+and the defects found while testing.
+
 Start with [the quickstart](docs/quickstart.md), then see
 [architecture](docs/architecture.md), [deployment](docs/deployment.md),
 [security](docs/security.md), and [testing](docs/testing.md). The canonical
