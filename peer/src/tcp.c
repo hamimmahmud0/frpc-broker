@@ -389,6 +389,7 @@ static void on_local_accept(uv_stream_t *server, int status) {
     s->hs_timer.data = s;
     uv_tcp_init(p->loop, &s->local_sock);
     s->local_sock.data = s;
+    tm_tcp_tune(&s->local_sock);
     if (uv_accept(server, (uv_stream_t *)&s->local_sock) != 0) {
         uv_timer_stop(&s->hs_timer);
         uv_close((uv_handle_t *)&s->hs_timer, NULL);

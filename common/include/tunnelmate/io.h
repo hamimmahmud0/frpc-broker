@@ -75,6 +75,9 @@ uint64_t tm_io_write_total(tm_io *io);
 const char *tm_io_error_detail(tm_io *io);
 
 /* Create a connected TCP client (used by agent/peer). */
+/* Disable Nagle on a TCP handle. Every relay socket must call this. */
+void tm_tcp_tune(uv_tcp_t *tcp);
+
 tm_status tm_tcp_connect(uv_loop_t *loop, uv_tcp_t *tcp, const char *host,
                          uint16_t port, uv_connect_cb cb, void *arg);
 

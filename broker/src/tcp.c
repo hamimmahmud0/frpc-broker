@@ -72,6 +72,7 @@ static void on_public_accept(uv_stream_t *server, int status) {
        decide whether to keep it. */
     uv_tcp_t *sock = tm_xcalloc(1, sizeof(*sock));
     uv_tcp_init(b->loop, sock);
+    tm_tcp_tune(sock);
     if (uv_accept(server, (uv_stream_t *)sock) != 0) {
         uv_close((uv_handle_t *)sock, tm_broker_tls_free_handle_cb);
         return;

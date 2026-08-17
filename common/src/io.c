@@ -447,11 +447,20 @@ static void connect_cb(uv_connect_t *req, int status) {
     free(cr);
 }
 
+void tm_tcp_tune(uv_tcp_t *tcp) {
+    /* Nagle batches small writes and, against a peer using delayed ACKs, adds
+       roughly 40 ms to every small request/response. A relay forwards whatever
+       chunk sizes the application produces, so it must not add that delay: the
+       application decides its own batching. */
+    uv_tcp_nodelay(tcp, 1);
+}
+
 tm_status tm_tcp_connect(uv_loop_t *loop, uv_tcp_t *tcp, const char *host,
                          uint16_t port, uv_connect_cb cb, void *arg) {
     struct sockaddr_storage sa;
     if (tm_addr_parse(host, port, &sa) != TM_OK) return TM_ERR_INVALID;
     uv_tcp_init(loop, tcp);
+    tm_tcp_tune(tcp);
     tcp->data = arg;
     tm_connect_req *cr = tm_xcalloc(1, sizeof(*cr));
     cr->cb = cb;
