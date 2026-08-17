@@ -55,7 +55,8 @@ void tm_astream_close(tm_agent_app *a, tm_astream *st) {
     uv_close((uv_handle_t *)&st->connect_timer, stream_sock_closed);
 }
 
-static void flush_pend(tm_io *io, uint8_t **buf, size_t *len, size_t *cap);
+static void flush_pend(tm_io *io, uint8_t **buf, size_t *len, size_t *cap,
+                       bool *in_progress);
 
 /* ---------------------- relay callbacks ----------------------------- */
 
@@ -94,7 +95,11 @@ static void relay_broker_read(tm_io *io, const uint8_t *data, size_t len, void *
         }
         return;
     }
-    int r = tm_io_write(st->local_io, data, len);
+    /* Never overtake bytes already queued in pending_buf: tm_io_write
+       accepts anything that fits under the high watermark, which would let
+       a small chunk pass a larger queued one and reorder the stream. */
+    int r = st->pending_len ? TM_ERR_BUSY
+                            : tm_io_write(st->local_io, data, len);
     if (r == TM_ERR_BUSY) {
         if (st->pending_len + len > st->pending_cap) {
             size_t ncap = st->pending_cap ? st->pending_cap * 2 : 16384;
@@ -117,8 +122,10 @@ static void relay_broker_eof(tm_io *io, void *arg) {
     if (st->closing) return;
     st->broker_eof = true;
     if (!st->local_io) return; /* flushed once local connects */
-    flush_pend(st->local_io, &st->pending_buf, &st->pending_len, &st->pending_cap);
-    flush_pend(st->broker_io, &st->pend_buf, &st->pend_len, &st->pend_cap);
+    flush_pend(st->local_io, &st->pending_buf, &st->pending_len, &st->pending_cap,
+               &st->flushing_local);
+    flush_pend(st->broker_io, &st->pend_buf, &st->pend_len, &st->pend_cap,
+               &st->flushing_broker);
     if (st->pending_len) { astream_maybe_close(st); return; }
     st->local_fin = true;
     tm_io_shutdown_send(st->local_io);
@@ -131,29 +138,37 @@ static void relay_broker_error(tm_io *io, int err, void *arg) {
     tm_astream_close(st->a, st);
 }
 
-static void flush_pend(tm_io *io, uint8_t **buf, size_t *len, size_t *cap);
-static void flush_pend(tm_io *io, uint8_t **buf, size_t *len, size_t *cap) {
+/* See the broker relay: tm_io_write can drain synchronously and fire the
+   low-water callback, re-entering this function on the same buffer. The guard
+   stops the inner pass from consuming the slice the outer loop still holds,
+   which would otherwise duplicate some bytes and skip others. */
+static void flush_pend(tm_io *io, uint8_t **buf, size_t *len, size_t *cap,
+                       bool *in_progress) {
+    if (*in_progress) return;
+    *in_progress = true;
     while (*len) {
         size_t n = *len < 65536 ? *len : 65536;
         int r = tm_io_write(io, *buf, n);
-        if (r == TM_ERR_BUSY) return;
+        if (r == TM_ERR_BUSY) break;
         if (r != TM_OK) {
             free(*buf);
             *buf = NULL;
             *len = *cap = 0;
-            return;
+            break;
         }
         memmove(*buf, *buf + n, *len - n);
         *len -= n;
         if (!*len) { free(*buf); *buf = NULL; *cap = 0; }
     }
+    *in_progress = false;
 }
 
 static void relay_broker_low(tm_io *io, void *arg) {
     tm_astream *st = (tm_astream *)arg;
     (void)io;
     if (st->closing) return;
-    flush_pend(st->broker_io, &st->pend_buf, &st->pend_len, &st->pend_cap);
+    flush_pend(st->broker_io, &st->pend_buf, &st->pend_len, &st->pend_cap,
+               &st->flushing_broker);
     if (st->pend_len) { astream_maybe_close(st); return; }
     if (st->local_eof && !st->broker_fin) {
         st->broker_fin = true;
@@ -171,7 +186,9 @@ static void relay_local_read(tm_io *io, const uint8_t *data, size_t len, void *a
     (void)io;
     if (st->closing) return;
     st->down_bytes += len;
-    int r = tm_io_write(st->broker_io, data, len);
+    /* Same ordering invariant as the broker-side leg. */
+    int r = st->pend_len ? TM_ERR_BUSY
+                         : tm_io_write(st->broker_io, data, len);
     if (r == TM_ERR_BUSY) {
         if (st->pend_len + len > st->pend_cap) {
             size_t ncap = st->pend_cap ? st->pend_cap * 2 : 16384;
@@ -193,7 +210,8 @@ static void relay_local_eof(tm_io *io, void *arg) {
     (void)io;
     if (st->closing) return;
     st->local_eof = true;
-    flush_pend(st->broker_io, &st->pend_buf, &st->pend_len, &st->pend_cap);
+    flush_pend(st->broker_io, &st->pend_buf, &st->pend_len, &st->pend_cap,
+               &st->flushing_broker);
     if (st->pend_len) { astream_maybe_close(st); return; }
     st->broker_fin = true;
     tm_io_shutdown_send(st->broker_io);
@@ -210,7 +228,8 @@ static void relay_local_low(tm_io *io, void *arg) {
     tm_astream *st = (tm_astream *)arg;
     (void)io;
     if (st->closing) return;
-    flush_pend(st->local_io, &st->pending_buf, &st->pending_len, &st->pending_cap);
+    flush_pend(st->local_io, &st->pending_buf, &st->pending_len, &st->pending_cap,
+               &st->flushing_local);
     if (st->pending_len) { astream_maybe_close(st); return; }
     if (st->broker_eof && !st->local_fin) {
         st->local_fin = true;
@@ -251,7 +270,7 @@ static void local_connected(uv_connect_t *req, int status) {
        downstream high watermark would be rejected even though the relay can
        drain it safely in bounded chunks. relay_local_low continues the flush. */
     flush_pend(st->local_io, &st->pending_buf, &st->pending_len,
-               &st->pending_cap);
+               &st->pending_cap, &st->flushing_local);
     if (st->pending_len) {
         tm_io_pause_read(st->broker_io);
         st->broker_paused = true;

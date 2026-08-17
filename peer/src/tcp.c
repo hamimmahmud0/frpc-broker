@@ -53,7 +53,8 @@ static void psess_maybe_close(tm_psess *s) {
     tm_psess_close(s->p, s);
 }
 
-static void flush_pend(tm_io *io, uint8_t **buf, size_t *len, size_t *cap);
+static void flush_pend(tm_io *io, uint8_t **buf, size_t *len, size_t *cap,
+                       bool *in_progress);
 
 /* ---------------------- relay callbacks ----------------------------- */
 
@@ -77,7 +78,9 @@ static void relay_broker_read(tm_io *io, const uint8_t *data, size_t len, void *
         s->pending_len += len;
         return;
     }
-    int r = tm_io_write(s->local_io, data, len);
+    /* Never overtake bytes already queued in pending_buf. */
+    int r = s->pending_len ? TM_ERR_BUSY
+                           : tm_io_write(s->local_io, data, len);
     if (r == TM_ERR_BUSY) {
         if (s->pending_len + len > s->pending_cap) {
             size_t ncap = s->pending_cap ? s->pending_cap * 2 : 16384;
@@ -100,8 +103,10 @@ static void relay_broker_eof(tm_io *io, void *arg) {
     if (s->closing) return;
     s->broker_eof = true;
     if (!s->local_io) return; /* flushed once local binds */
-    flush_pend(s->local_io, &s->pending_buf, &s->pending_len, &s->pending_cap);
-    flush_pend(s->broker_io, &s->pend_buf, &s->pend_len, &s->pend_cap);
+    flush_pend(s->local_io, &s->pending_buf, &s->pending_len, &s->pending_cap,
+               &s->flushing_local);
+    flush_pend(s->broker_io, &s->pend_buf, &s->pend_len, &s->pend_cap,
+               &s->flushing_broker);
     if (s->pending_len) { psess_maybe_close(s); return; }
     s->local_fin = true;
     tm_io_shutdown_send(s->local_io);
@@ -114,29 +119,37 @@ static void relay_broker_error(tm_io *io, int err, void *arg) {
     tm_psess_close(s->p, s);
 }
 
-static void flush_pend(tm_io *io, uint8_t **buf, size_t *len, size_t *cap);
-static void flush_pend(tm_io *io, uint8_t **buf, size_t *len, size_t *cap) {
+/* See the broker relay: tm_io_write can drain synchronously and fire the
+   low-water callback, re-entering this function on the same buffer. The guard
+   stops the inner pass from consuming the slice the outer loop still holds,
+   which would otherwise duplicate some bytes and skip others. */
+static void flush_pend(tm_io *io, uint8_t **buf, size_t *len, size_t *cap,
+                       bool *in_progress) {
+    if (*in_progress) return;
+    *in_progress = true;
     while (*len) {
         size_t n = *len < 65536 ? *len : 65536;
         int r = tm_io_write(io, *buf, n);
-        if (r == TM_ERR_BUSY) return;
+        if (r == TM_ERR_BUSY) break;
         if (r != TM_OK) {
             free(*buf);
             *buf = NULL;
             *len = *cap = 0;
-            return;
+            break;
         }
         memmove(*buf, *buf + n, *len - n);
         *len -= n;
         if (!*len) { free(*buf); *buf = NULL; *cap = 0; }
     }
+    *in_progress = false;
 }
 
 static void relay_broker_low(tm_io *io, void *arg) {
     tm_psess *s = (tm_psess *)arg;
     (void)io;
     if (s->closing) return;
-    flush_pend(s->broker_io, &s->pend_buf, &s->pend_len, &s->pend_cap);
+    flush_pend(s->broker_io, &s->pend_buf, &s->pend_len, &s->pend_cap,
+               &s->flushing_broker);
     if (s->pend_len) { psess_maybe_close(s); return; }
     if (s->local_eof && !s->broker_fin) {
         s->broker_fin = true;
@@ -153,7 +166,9 @@ static void relay_local_read(tm_io *io, const uint8_t *data, size_t len, void *a
     tm_psess *s = (tm_psess *)arg;
     (void)io;
     if (s->closing) return;
-    int r = tm_io_write(s->broker_io, data, len);
+    /* Same ordering invariant as the local leg. */
+    int r = s->pend_len ? TM_ERR_BUSY
+                        : tm_io_write(s->broker_io, data, len);
     if (r == TM_ERR_BUSY) {
         if (s->pend_len + len > s->pend_cap) {
             size_t ncap = s->pend_cap ? s->pend_cap * 2 : 16384;
@@ -175,7 +190,8 @@ static void relay_local_eof(tm_io *io, void *arg) {
     (void)io;
     if (s->closing) return;
     s->local_eof = true;
-    flush_pend(s->broker_io, &s->pend_buf, &s->pend_len, &s->pend_cap);
+    flush_pend(s->broker_io, &s->pend_buf, &s->pend_len, &s->pend_cap,
+               &s->flushing_broker);
     if (s->pend_len) { psess_maybe_close(s); return; }
     s->broker_fin = true;
     tm_io_shutdown_send(s->broker_io);
@@ -192,7 +208,8 @@ static void relay_local_low(tm_io *io, void *arg) {
     tm_psess *s = (tm_psess *)arg;
     (void)io;
     if (s->closing) return;
-    flush_pend(s->local_io, &s->pending_buf, &s->pending_len, &s->pending_cap);
+    flush_pend(s->local_io, &s->pending_buf, &s->pending_len, &s->pending_cap,
+               &s->flushing_local);
     if (s->pending_len) { psess_maybe_close(s); return; }
     if (s->broker_eof && !s->local_fin) {
         s->local_fin = true;

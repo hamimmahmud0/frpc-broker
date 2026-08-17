@@ -71,6 +71,9 @@ bool tm_io_is_tls(tm_io *io);
 void tm_io_close(tm_io *io);
 uint64_t tm_io_write_total(tm_io *io);
 
+/* Bounded, secret-free description of the last transport failure. */
+const char *tm_io_error_detail(tm_io *io);
+
 /* Create a connected TCP client (used by agent/peer). */
 tm_status tm_tcp_connect(uv_loop_t *loop, uv_tcp_t *tcp, const char *host,
                          uint16_t port, uv_connect_cb cb, void *arg);

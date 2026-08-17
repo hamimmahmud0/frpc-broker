@@ -165,6 +165,11 @@ struct tm_stream {
     uint8_t *pend_b; /* destined for io_b (from leg A) */
     size_t pend_b_len, pend_b_cap;
     bool a_fin, b_fin; /* FIN sent to io_b / io_a once the pend drained */
+    /* Set while flush_pend is walking that queue. A synchronous drain inside
+       tm_io_write fires the low-water callback, which re-enters flush_pend;
+       these keep the inner pass from consuming the slice the outer loop is
+       still holding. */
+    bool flushing_a, flushing_b;
 };
 
 /* ---------------------------------------------------------------- */

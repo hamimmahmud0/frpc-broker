@@ -81,6 +81,9 @@ bool tm_ssl_is_dtls(tm_ssl_stream *s);
 /* backpressure plumbing */
 typedef void (*tm_ssl_low_cb)(tm_ssl_stream *s, void *arg);
 void tm_ssl_stream_set_low_cb(tm_ssl_stream *s, tm_ssl_low_cb cb, void *arg);
+/* Bounded, secret-free description of the last TLS failure ("" if none). */
+const char *tm_ssl_stream_error_detail(tm_ssl_stream *s);
+
 void tm_ssl_stream_pause_read(tm_ssl_stream *s);
 void tm_ssl_stream_resume_read(tm_ssl_stream *s);
 

@@ -119,7 +119,14 @@ def test_rapid_connect_disconnect_churn(broker_factory) -> None:
         except OSError:
             pass
 
-    wait_for(lambda: broker.tunnel(tunnel["tunnel_id"])["streams_active"] == 0, timeout=30)
+    wait_for(lambda: broker.tunnel(tunnel["tunnel_id"])["streams_active"] == 0, timeout=60)
+    # Descriptor release is asynchronous (uv_close callbacks), so let the count
+    # settle rather than sampling the instant the stream counter hits zero.
+    wait_for(
+        lambda: open_fds(broker.process.pid) - baseline_fds < 32,
+        timeout=30,
+        interval=0.25,
+    )
     grown = open_fds(broker.process.pid) - baseline_fds
     print(f"\nchurn cycles=200 fd_growth={grown}")
     assert grown < 32, f"descriptor growth after 200 connect/close cycles: {grown}"

@@ -411,6 +411,14 @@ bool tm_io_is_tls(tm_io *io) {
 }
 void tm_io_close(tm_io *io) { if (io) io_ops(io)->close(io); }
 
+const char *tm_io_error_detail(tm_io *io) {
+    if (io && io->kind == TM_IO_KIND_SSL) {
+        tm_io_ssl *t = (tm_io_ssl *)io->impl;
+        return t->ssl ? tm_ssl_stream_error_detail(t->ssl) : "";
+    }
+    return "";
+}
+
 uint64_t tm_io_write_total(tm_io *io) {
     if (!io) return 0;
     if (io->kind == TM_IO_KIND_TCP) {

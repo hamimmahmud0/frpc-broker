@@ -51,6 +51,9 @@ struct tm_psess {
     bool local_paused;
     bool broker_paused;
     bool local_fin, broker_fin;
+    /* Guards against flush_pend re-entering itself from a low-water callback
+       fired synchronously inside tm_io_write. */
+    bool flushing_local, flushing_broker;
     bool closing;
     bool connecting;
     int closing_refs;

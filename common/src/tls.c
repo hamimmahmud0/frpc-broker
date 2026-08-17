@@ -197,7 +197,9 @@ struct tm_ssl_stream {
     size_t ssl_retry_len;
     uint8_t inbuf[TM_SSL_INBUF_SIZE];
     int last_err;
+    char err_detail[224];
     bool above_low;
+    bool read_paused;
     bool pumping_read;
     bool free_pending;
     bool freeing;
@@ -206,6 +208,7 @@ struct tm_ssl_stream {
 };
 
 static void pump_write(tm_ssl_stream *s);
+static void pump_read(tm_ssl_stream *s);
 static void tls_try_shutdown(tm_ssl_stream *s);
 static void dtls_timer_cb(uv_timer_t *t);
 
@@ -312,6 +315,21 @@ static void on_write_done(uv_write_t *req, int status) {
         tls_try_shutdown(s);
 }
 
+/* Capture the OpenSSL reason for the most recent failure. Without this a TLS
+   fault surfaces to the relay as a bare error code with no way to tell a
+   protocol violation from a truncated stream. Bounded and free of user data. */
+static void record_tls_error(tm_ssl_stream *s, const char *where, int ssl_err) {
+    unsigned long code = ERR_peek_last_error();
+    char reason[160];
+    if (code)
+        ERR_error_string_n(code, reason, sizeof(reason));
+    else
+        snprintf(reason, sizeof(reason), "no queued error");
+    snprintf(s->err_detail, sizeof(s->err_detail), "%s ssl_err=%d errno=%d %s",
+             where, ssl_err, errno, reason);
+    ERR_clear_error();
+}
+
 static void pump_write(tm_ssl_stream *s) {
     if (s->state == TM_SS_STATE_CLOSED || s->inflight) return;
     for (;;) {
@@ -374,6 +392,7 @@ static void pump_write(tm_ssl_stream *s) {
             finish_close(s);
             return;
         }
+        record_tls_error(s, "pump_write", e);
         s->last_err = TM_ERR_TLS;
         finish_close(s);
         return;
@@ -387,6 +406,10 @@ bool tm_ssl_stream_write_available(tm_ssl_stream *s) {
 size_t tm_ssl_stream_pending(tm_ssl_stream *s) { return s->pq_len - s->pq_off; }
 
 uint64_t tm_ssl_stream_write_total(tm_ssl_stream *s) { return s->write_pq_total; }
+
+const char *tm_ssl_stream_error_detail(tm_ssl_stream *s) {
+    return s && s->err_detail[0] ? s->err_detail : "";
+}
 
 bool tm_ssl_stream_drained(tm_ssl_stream *s) {
     /* nothing queued and the last encrypted chunk has been handed to
@@ -434,6 +457,10 @@ static void promote_open(tm_ssl_stream *s) {
 static void pump_read_impl(tm_ssl_stream *s) {
     if (s->state == TM_SS_STATE_CLOSED) return;
     for (;;) {
+        /* A read callback that pauses the stream means "stop handing me data";
+           without this check the loop keeps delivering whatever is already
+           decrypted and backpressure only takes effect a pass too late. */
+        if (s->read_paused) return;
         int n = SSL_read(s->ssl, s->inbuf, (int)sizeof(s->inbuf));
         if (n > 0) {
             /* handshake may complete inside SSL_read; promote before
@@ -472,6 +499,7 @@ static void pump_read_impl(tm_ssl_stream *s) {
             if (s->cbs.eof_cb) s->cbs.eof_cb(s, s->cbs.arg);
             return;
         }
+        record_tls_error(s, "pump_read", e);
         s->last_err = TM_ERR_TLS;
         finish_close(s);
         return;
@@ -647,7 +675,14 @@ static void tls_try_shutdown(tm_ssl_stream *s) {
         return;
     }
     if (s->state != TM_SS_STATE_OPEN) return;
+    /* Reset the read cursor too. Leaving pq_off behind makes pq_off > pq_len,
+       which underflows tm_ssl_stream_pending(), keeps drained() false forever,
+       and sends pump_write back into SSL_write after close_notify ("protocol
+       is shutdown"). Only reachable when the queue was partly consumed, i.e.
+       after sustained backpressure. */
     s->pq_len = 0;
+    s->pq_off = 0;
+    s->ssl_retry_len = 0;
     s->shutdown_pending = false;
     SSL_shutdown(s->ssl); /* sends close_notify; result handled by read path */
     pump_write(s);
@@ -666,15 +701,24 @@ void tm_ssl_stream_set_low_cb(tm_ssl_stream *s, tm_ssl_low_cb cb, void *arg) {
 }
 
 void tm_ssl_stream_pause_read(tm_ssl_stream *s) {
+    /* Stopping the socket is not enough: plaintext already decrypted into the
+       SSL object would still be delivered by the pump. read_paused halts that
+       loop too, so a paused relay really does stop receiving. */
+    s->read_paused = true;
     if (!s->read_started || s->state == TM_SS_STATE_CLOSED) return;
     if (s->is_dtls) uv_udp_recv_stop(s->udp);
     else uv_read_stop(s->tcp);
 }
 
 void tm_ssl_stream_resume_read(tm_ssl_stream *s) {
+    if (!s->read_paused) return;
+    s->read_paused = false;
     if (!s->read_started || s->state == TM_SS_STATE_CLOSED) return;
     if (s->is_dtls) uv_udp_recv_start(s->udp, udp_alloc_cb, on_udp_recv);
     else uv_read_start(s->tcp, alloc_cb, on_read);
+    /* Drain whatever was buffered inside the SSL object while paused; without
+       this the stream can stall waiting for socket data that already arrived. */
+    pump_read(s);
 }
 
 void tm_ssl_stream_close(tm_ssl_stream *s) {

@@ -69,7 +69,8 @@ static void stream_maybe_close(tm_stream *st) {
     tm_stream_close(st->tun->b, st);
 }
 
-static void flush_pend(tm_io *io, uint8_t **buf, size_t *len, size_t *cap);
+static void flush_pend(tm_io *io, uint8_t **buf, size_t *len, size_t *cap,
+                       bool *in_progress);
 
 /* ---------------------- consumer-side (leg A) callbacks ------------- */
 
@@ -109,7 +110,11 @@ static void relay_a_read(tm_io *io, const uint8_t *data, size_t len, void *arg) 
         }
         return;
     }
-    int r = tm_io_write(st->io_b, data, len);
+    /* Once anything is queued, everything must queue behind it. tm_io_write
+       accepts a chunk whenever it fits under the high watermark, so a small
+       chunk could otherwise slip past a larger one already waiting in pend_b
+       and reorder the stream. */
+    int r = st->pend_b_len ? TM_ERR_BUSY : tm_io_write(st->io_b, data, len);
     if (r == TM_ERR_BUSY) {
         if (st->pend_b_len + len > st->pend_b_cap) {
             size_t ncap = st->pend_b_cap ? st->pend_b_cap * 2 : 16384;
@@ -132,7 +137,8 @@ static void relay_a_eof(tm_io *io, void *arg) {
     if (st->closing) return;
     st->a_eof = true;
     if (!st->io_b) { stream_maybe_close(st); return; }
-    flush_pend(st->io_b, &st->pend_b, &st->pend_b_len, &st->pend_b_cap);
+    flush_pend(st->io_b, &st->pend_b, &st->pend_b_len, &st->pend_b_cap,
+               &st->flushing_b);
     if (st->pend_b_len) { stream_maybe_close(st); return; }
     st->a_fin = true;
     tm_io_shutdown_send(st->io_b);
@@ -149,7 +155,8 @@ static void relay_a_error(tm_io *io, int err, void *arg) {
     if (st->io_a) { tm_io_close(st->io_a); st->io_a = NULL; }
     st->a_eof = true;
     if (!st->io_b) { stream_maybe_close(st); return; }
-    flush_pend(st->io_b, &st->pend_b, &st->pend_b_len, &st->pend_b_cap);
+    flush_pend(st->io_b, &st->pend_b, &st->pend_b_len, &st->pend_b_cap,
+               &st->flushing_b);
     if (st->pend_b_len) { stream_maybe_close(st); return; }
     st->a_fin = true;
     tm_io_shutdown_send(st->io_b);
@@ -158,22 +165,34 @@ static void relay_a_error(tm_io *io, int err, void *arg) {
 
 /* feed pend into io in pieces so progress is made even when a piece
    exceeds the io's high-water mark; BUSY leaves the rest for the next
-   low callback (the partial write keeps the FIN from firing early) */
-static void flush_pend(tm_io *io, uint8_t **buf, size_t *len, size_t *cap) {
+   low callback (the partial write keeps the FIN from firing early)
+
+   tm_io_write can drain the whole TLS queue synchronously and fire the
+   low-water callback from inside the call, which lands back here on the same
+   buffer. Without a guard that re-entrant pass would re-send the slice the
+   outer loop has not consumed yet and then shift *len underneath it, sending
+   some bytes twice and skipping others while the total stayed correct. The
+   outer loop is already going to send the rest, so the inner pass simply
+   returns. */
+static void flush_pend(tm_io *io, uint8_t **buf, size_t *len, size_t *cap,
+                       bool *in_progress) {
+    if (*in_progress) return;
+    *in_progress = true;
     while (*len) {
         size_t n = *len < 65536 ? *len : 65536;
         int r = tm_io_write(io, *buf, n);
-        if (r == TM_ERR_BUSY) return;
+        if (r == TM_ERR_BUSY) break;
         if (r != TM_OK) {
             free(*buf);
             *buf = NULL;
             *len = *cap = 0;
-            return;
+            break;
         }
         memmove(*buf, *buf + n, *len - n);
         *len -= n;
         if (!*len) { free(*buf); *buf = NULL; *cap = 0; }
     }
+    *in_progress = false;
 }
 
 static void relay_a_low(tm_io *io, void *arg) {
@@ -182,7 +201,8 @@ static void relay_a_low(tm_io *io, void *arg) {
     (void)io;
     if (st->closing) return;
     if (!st->io_a) { stream_maybe_close(st); return; }
-    flush_pend(st->io_a, &st->pend_a, &st->pend_a_len, &st->pend_a_cap);
+    flush_pend(st->io_a, &st->pend_a, &st->pend_a_len, &st->pend_a_cap,
+               &st->flushing_a);
     if (st->pend_a_len) { stream_maybe_close(st); return; }
     if (st->b_eof && !st->b_fin) { st->b_fin = true; tm_io_shutdown_send(st->io_a); }
     if (st->b_paused && st->io_b) {
@@ -207,7 +227,8 @@ static void relay_b_read(tm_io *io, const uint8_t *data, size_t len, void *arg) 
         tm_stream_close(st->tun->b, st);
         return;
     }
-    int r = tm_io_write(st->io_a, data, len);
+    /* Same ordering invariant as leg A: never overtake queued bytes. */
+    int r = st->pend_a_len ? TM_ERR_BUSY : tm_io_write(st->io_a, data, len);
     if (r == TM_ERR_BUSY) {
         if (st->pend_a_len + len > st->pend_a_cap) {
             size_t ncap = st->pend_a_cap ? st->pend_a_cap * 2 : 16384;
@@ -232,7 +253,8 @@ static void relay_b_eof(tm_io *io, void *arg) {
                  (unsigned long long)tm_io_write_total(io), st->pend_b_len);
     st->b_eof = true;
     if (!st->io_a) { stream_maybe_close(st); return; }
-    flush_pend(st->io_a, &st->pend_a, &st->pend_a_len, &st->pend_a_cap);
+    flush_pend(st->io_a, &st->pend_a, &st->pend_a_len, &st->pend_a_cap,
+               &st->flushing_a);
     if (st->pend_a_len) { stream_maybe_close(st); return; }
     st->b_fin = true;
     tm_io_shutdown_send(st->io_a);
@@ -243,14 +265,16 @@ static void relay_b_error(tm_io *io, int err, void *arg) {
     tm_stream *st = (tm_stream *)arg;
     if (st->closing) return;
     tm_log_warn(st->tun->b->log, "relay_b_error", "stream_id", NULL,
-                "%u err=%d accepted=%llu pending=%zu", st->id, err,
-                (unsigned long long)tm_io_write_total(io), st->pend_b_len);
+                "%u err=%d accepted=%llu pending=%zu detail=%s", st->id, err,
+                (unsigned long long)tm_io_write_total(io), st->pend_b_len,
+                tm_io_error_detail(io));
     /* the agent leg is dead: close it now, keep relaying what the
        consumer leg still has queued, then close once it drains */
     if (st->io_b) { tm_io_close(st->io_b); st->io_b = NULL; }
     st->b_eof = true;
     if (!st->io_a) { stream_maybe_close(st); return; }
-    flush_pend(st->io_a, &st->pend_a, &st->pend_a_len, &st->pend_a_cap);
+    flush_pend(st->io_a, &st->pend_a, &st->pend_a_len, &st->pend_a_cap,
+               &st->flushing_a);
     if (st->pend_a_len) { stream_maybe_close(st); return; }
     st->b_fin = true;
     tm_io_shutdown_send(st->io_a);
@@ -263,7 +287,8 @@ static void relay_b_low(tm_io *io, void *arg) {
     (void)io;
     if (st->closing) return;
     if (!st->io_b) { stream_maybe_close(st); return; }
-    flush_pend(st->io_b, &st->pend_b, &st->pend_b_len, &st->pend_b_cap);
+    flush_pend(st->io_b, &st->pend_b, &st->pend_b_len, &st->pend_b_cap,
+               &st->flushing_b);
     if (st->pend_b_len) { stream_maybe_close(st); return; }
     if (st->a_eof && !st->a_fin) { st->a_fin = true; tm_io_shutdown_send(st->io_b); }
     if (st->a_paused && st->io_a) {
@@ -325,7 +350,7 @@ void tm_stream_relay_start(tm_broker *b, tm_stream *st) {
         st->preq_len = 0;
         st->preq_cap = 0;
         flush_pend(st->io_b, &st->pend_b, &st->pend_b_len,
-                   &st->pend_b_cap);
+                   &st->pend_b_cap, &st->flushing_b);
     }
     if (st->pend_b_len) {
         tm_io_pause_read(st->io_a);
