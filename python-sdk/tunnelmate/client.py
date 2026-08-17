@@ -11,6 +11,7 @@ import tempfile
 import threading
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from types import TracebackType
 from typing import Any, Self
@@ -19,31 +20,69 @@ import httpx
 
 from .config import PeerConfig, TunnelConfig
 
-MessageHandler = Callable[[str, bytes, Any], bytes | None]
+MessageHandler = Callable[[str, bytes, "HandlerContext"], bytes | None]
+
+PEER_TO_SERVICE = "peer_to_service"
+SERVICE_TO_PEER = "service_to_peer"
 
 
 class TunnelMateError(RuntimeError):
     pass
 
 
-class _HandlerProxy:
-    """Small opt-in TCP proxy used only when payload interception is requested."""
+@dataclass(frozen=True)
+class HandlerContext:
+    """What a message handler is told about the chunk or datagram it is given.
 
-    def __init__(self, target_host: str, target_port: int, handler: MessageHandler):
+    Deliberately carries no credential: a handler is user code and has no
+    business seeing the tunnel's secrets.
+    """
+
+    remote_ip: str
+    remote_port: int
+    tunnel_id: str | None
+    protocol: str
+    direction: str
+    flow_id: str | None = None
+
+    @property
+    def remote_address(self) -> str:
+        return f"{self.remote_ip}:{self.remote_port}"
+
+
+class _HandlerProxy:
+    """Opt-in TCP proxy, used only when payload interception is requested.
+
+    TCP has no message boundaries, so the handler sees arbitrary chunks; that
+    limitation is the application's to reason about, not something the proxy can
+    paper over.
+    """
+
+    def __init__(
+        self,
+        target_host: str,
+        target_port: int,
+        handler: MessageHandler,
+        tunnel_id: str | None = None,
+    ):
         class RequestHandler(socketserver.BaseRequestHandler):
             def handle(self) -> None:
                 upstream = socket.create_connection(
                     (target_host, target_port), timeout=10
                 )
                 upstream.settimeout(None)
-                context = {
-                    "peer": self.client_address,
-                    "service": (target_host, target_port),
-                }
+                remote_ip, remote_port = self.client_address[0], self.client_address[1]
 
                 def relay(
                     source: socket.socket, destination: socket.socket, direction: str
                 ) -> None:
+                    context = HandlerContext(
+                        remote_ip=remote_ip,
+                        remote_port=remote_port,
+                        tunnel_id=tunnel_id,
+                        protocol="tcp",
+                        direction=direction,
+                    )
                     try:
                         while True:
                             chunk = source.recv(65536)
@@ -68,10 +107,10 @@ class _HandlerProxy:
 
                 peer = self.request
                 first = threading.Thread(
-                    target=relay, args=(peer, upstream, "peer_to_service"), daemon=True
+                    target=relay, args=(peer, upstream, PEER_TO_SERVICE), daemon=True
                 )
                 second = threading.Thread(
-                    target=relay, args=(upstream, peer, "service_to_peer"), daemon=True
+                    target=relay, args=(upstream, peer, SERVICE_TO_PEER), daemon=True
                 )
                 try:
                     first.start()
@@ -98,6 +137,122 @@ class _HandlerProxy:
         self.server.shutdown()
         self.server.server_close()
         self.thread.join(timeout=2)
+
+
+class _UdpHandlerProxy:
+    """Opt-in UDP proxy: exactly one handler call per datagram.
+
+    Datagram boundaries are the whole point of a UDP tunnel, so this never
+    coalesces: one datagram in gives one handler call, and returned bytes are
+    sent as exactly one datagram. Returning None drops it. Each remote address
+    gets its own upstream socket so the service's replies route back correctly,
+    the same NAT-style mapping the C agent uses.
+    """
+
+    MAX_DATAGRAM = 65535
+
+    def __init__(
+        self,
+        target_host: str,
+        target_port: int,
+        handler: MessageHandler,
+        tunnel_id: str | None = None,
+        max_flows: int = 1024,
+    ):
+        self._target = (target_host, target_port)
+        self._handler = handler
+        self._tunnel_id = tunnel_id
+        self._max_flows = max_flows
+        self._flows: dict[tuple[str, int], socket.socket] = {}
+        self._lock = threading.Lock()
+        self._stop = threading.Event()
+
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind(("127.0.0.1", 0))
+        self.port = int(self.sock.getsockname()[1])
+        self.thread = threading.Thread(
+            target=self._serve, name="tunnelmate-udp-handler", daemon=True
+        )
+
+    def _context(self, remote: tuple[str, int], direction: str) -> HandlerContext:
+        return HandlerContext(
+            remote_ip=remote[0],
+            remote_port=remote[1],
+            tunnel_id=self._tunnel_id,
+            protocol="udp",
+            direction=direction,
+            flow_id=f"uflow_{remote[0]}:{remote[1]}",
+        )
+
+    def _reply_pump(self, remote: tuple[str, int], upstream: socket.socket) -> None:
+        while not self._stop.is_set():
+            try:
+                data, _ = upstream.recvfrom(self.MAX_DATAGRAM)
+            except (TimeoutError, OSError):
+                continue
+            try:
+                out = self._handler(SERVICE_TO_PEER, data, self._context(remote, SERVICE_TO_PEER))
+            except Exception:  # noqa: BLE001,S112 - a bad handler drops its own datagram
+                continue
+            if out is None:
+                continue
+            if not isinstance(out, bytes):
+                raise TypeError("message handler must return bytes or None")
+            try:
+                self.sock.sendto(out, remote)
+            except OSError:
+                return
+
+    def _upstream_for(self, remote: tuple[str, int]) -> socket.socket | None:
+        with self._lock:
+            existing = self._flows.get(remote)
+            if existing is not None:
+                return existing
+            if len(self._flows) >= self._max_flows:
+                return None
+            upstream = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            upstream.settimeout(0.5)
+            upstream.connect(self._target)
+            self._flows[remote] = upstream
+        threading.Thread(
+            target=self._reply_pump, args=(remote, upstream), daemon=True
+        ).start()
+        return upstream
+
+    def _serve(self) -> None:
+        self.sock.settimeout(0.5)
+        while not self._stop.is_set():
+            try:
+                data, remote = self.sock.recvfrom(self.MAX_DATAGRAM)
+            except (TimeoutError, OSError):
+                continue
+            upstream = self._upstream_for(remote)
+            if upstream is None:
+                continue
+            try:
+                out = self._handler(PEER_TO_SERVICE, data, self._context(remote, PEER_TO_SERVICE))
+            except Exception:  # noqa: BLE001,S112 - a bad handler drops its own datagram
+                continue
+            if out is None:
+                continue
+            if not isinstance(out, bytes):
+                raise TypeError("message handler must return bytes or None")
+            try:
+                upstream.send(out)
+            except OSError:
+                continue
+
+    def start(self) -> None:
+        self.thread.start()
+
+    def close(self) -> None:
+        self._stop.set()
+        self.thread.join(timeout=2)
+        with self._lock:
+            for upstream in self._flows.values():
+                upstream.close()
+            self._flows.clear()
+        self.sock.close()
 
 
 def _binary(explicit: Path | None, env_name: str, name: str) -> str:
@@ -229,7 +384,14 @@ class Tunnel:
         local_host = self.config.host
         local_port = self.config.port
         if self._handler is not None:
-            self._handler_proxy = _HandlerProxy(local_host, local_port, self._handler)
+            # UDP needs the datagram-preserving proxy; a stream proxy would
+            # merge datagrams and silently break the application.
+            proxy_cls = (
+                _UdpHandlerProxy if self.config.protocol == "udp" else _HandlerProxy
+            )
+            self._handler_proxy = proxy_cls(
+                local_host, local_port, self._handler, created["tunnel_id"]
+            )
             self._handler_proxy.start()
             local_host = "127.0.0.1"
             local_port = self._handler_proxy.port

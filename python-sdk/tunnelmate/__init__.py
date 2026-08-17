@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .client import Peer, Tunnel, TunnelMateError
+from .client import HandlerContext, Peer, Tunnel, TunnelMateError
 from .config import PeerConfig, TunnelConfig
 
 
@@ -37,6 +37,7 @@ def connect(
 
 
 __all__ = [
+    "HandlerContext",
     "Peer",
     "PeerConfig",
     "Tunnel",
