@@ -49,11 +49,21 @@ if [[ ! -f /etc/tunnelmate/tunnelmate.env ]]; then
   chmod 0640 /etc/tunnelmate/tunnelmate.env
 fi
 if [[ ! -f /etc/tunnelmate/certs/broker.crt || ! -f /etc/tunnelmate/certs/broker.key ]]; then
-  host=${TUNNELMATE_PUBLIC_HOST:-localhost}
+  host=$(sed -n 's/^TUNNELMATE_PUBLIC_HOST=//p' /etc/tunnelmate/tunnelmate.env)
+  host=${host:-${TUNNELMATE_PUBLIC_HOST:-localhost}}
+  # A bare IP must go in the SAN as IP:, not DNS: — clients match the address
+  # they dialled, so a DNS-typed SAN would fail hostname verification against
+  # an IP-addressed broker.
+  if [[ $host =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ || $host == *:*:* ]]; then
+    san="IP:$host"
+  else
+    san="DNS:$host"
+  fi
   openssl req -x509 -newkey rsa:3072 -nodes -days 30 \
-    -subj "/CN=$host" -addext "subjectAltName=DNS:$host" \
+    -subj "/CN=$host" -addext "subjectAltName=$san" \
     -keyout /etc/tunnelmate/certs/broker.key \
     -out /etc/tunnelmate/certs/broker.crt
+  echo "transport certificate SAN: $san"
   echo "WARNING: installed a development self-signed transport certificate." >&2
   echo "Replace it with a trusted certificate before public production use." >&2
 fi
@@ -63,7 +73,13 @@ chmod 0640 /etc/tunnelmate/certs/broker.*
 install -o root -g root -m 0644 "$src_dir/deployment/systemd/tunnelmated.service" /etc/systemd/system/
 install -o root -g root -m 0644 "$src_dir/deployment/systemd/tunnelmate-api.service" /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable --now tunnelmated tunnelmate-api
+systemctl enable tunnelmated tunnelmate-api
+# Restart rather than "enable --now": on a re-run the units are already up and
+# would otherwise keep serving the previous configuration and binaries, which
+# makes an idempotent redeploy silently do nothing. The broker goes first so
+# the API finds working IPC when it comes back.
+systemctl restart tunnelmated
+systemctl restart tunnelmate-api
 
 # ---------------------------------------------------------------------------
 # Verification. Do not hide failures: a unit that is restarting in a loop, or a
