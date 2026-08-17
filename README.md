@@ -26,6 +26,19 @@ Use `-DTUNNELMATE_SANITIZE=ON` for ASan/UBSan. The integration tests launch
 real broker, agent, and peer binaries and cover open/closed TCP/UDP, bad closed
 tokens, datagram boundaries, large payload integrity, and teardown.
 
+## Release binaries
+
+```bash
+sudo ./scripts/build-release.sh x86_64 aarch64
+```
+
+Produces `dist/tunnelmate-<version>-linux-<arch>.tar.gz` holding all three
+binaries linked statically against musl — no libuv, no OpenSSL, no glibc
+version to match, so they run on any Linux with a matching CPU. Drop them in
+`/var/lib/tunnelmate/releases` and a broker serves them at `/v1/downloads`,
+which is where its `/llms.txt` then sends new users. See
+[docs/releases.md](docs/releases.md).
+
 ## Quick server install
 
 Point a DNS name at the VPS, open TCP 443/7000/20000-40000 and UDP

@@ -7,6 +7,9 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
+/* STDERR_FILENO. glibc drags it in through another header; musl does not, so
+   omitting it breaks the static release build and nothing else. */
+#include <unistd.h>
 
 /* tunnelmate-peer: consumer-side access to closed tunnels.
    Usage: tunnelmate-peer connect tunnel://host[:port]/<tunnel-id>

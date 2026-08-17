@@ -38,6 +38,10 @@ class Settings:
     # hands it to anyone who connects — and agents need it when the deployment
     # uses a self-signed one, which is the default after install.
     broker_cert_path: Path
+    # Release tarballs offered at /v1/downloads. Publishing them from the same
+    # origin as /llms.txt means a reader needs no second host and no second
+    # trust decision to get the agent binary.
+    release_dir: Path
     # Bounded in-memory metric history for the console: interval x history is
     # the visible window, and the whole series is a few hundred KiB.
     metrics_interval_seconds: int = 5
@@ -76,6 +80,7 @@ class Settings:
             broker_cert_path=Path(
                 os.getenv("TUNNELMATE_BROKER_CERT", "/etc/tunnelmate/certs/broker.crt")
             ),
+            release_dir=Path(os.getenv("TUNNELMATE_RELEASE_DIR", "/var/lib/tunnelmate/releases")),
             metrics_interval_seconds=int(os.getenv("TUNNELMATE_METRICS_INTERVAL", "5")),
             metrics_history=int(os.getenv("TUNNELMATE_METRICS_HISTORY", "240")),
         )

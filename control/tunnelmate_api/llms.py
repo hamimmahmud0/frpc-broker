@@ -9,10 +9,108 @@ deployment, and a reader following stale values would build wrong requests.
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .config import Settings
+
+# scripts/build-release.sh names its tarballs like
+# tunnelmate-0.1.0-linux-x86_64.tar.gz.
+_RELEASE_TARBALL = re.compile(r"^tunnelmate-(?P<version>[^/]+?)-linux-(?P<arch>[^/]+)\.tar\.gz$")
+
+
+def _published_releases(release_dir: Path) -> tuple[str | None, list[str]]:
+    """The version and architectures this deployment actually has on disk.
+
+    Read at render time rather than hard-coded, because a version baked into
+    the document would start naming a download that 404s the moment the
+    operator publishes a different build — which is the failure this whole
+    document exists to avoid.
+    """
+    try:
+        names = sorted(p.name for p in release_dir.iterdir() if p.is_file())
+    except OSError:
+        return None, []
+    version: str | None = None
+    arches: list[str] = []
+    for name in names:
+        match = _RELEASE_TARBALL.match(name)
+        if not match:
+            continue
+        # Mixed versions in one directory would make the example ambiguous;
+        # the newest sorts last, so keep taking it.
+        version = match["version"]
+        arches.append(match["arch"])
+    return version, sorted(set(arches))
+
+
+def _download_steps(base_url: str, version: str, arches: list[str]) -> str:
+    """Step 1 when this deployment actually publishes binaries."""
+    listing = "\n".join(f"  tunnelmate-{version}-linux-{arch}.tar.gz" for arch in arches)
+    return f"""### Step 1 — get the binaries
+
+This broker publishes pre-built binaries, so there is nothing to compile.
+Currently available:
+
+```
+{listing}
+```
+
+Pick the one matching `uname -m` — `x86_64` for ordinary PCs and servers,
+`aarch64` for ARM machines such as a Raspberry Pi or an ARM cloud instance:
+
+```bash
+ARCH=$(uname -m)
+curl -fsSL {base_url}/v1/download/tunnelmate-{version}-linux-$ARCH.tar.gz | tar xz
+cd tunnelmate-{version}-linux-$ARCH
+sudo install -m 0755 tunnelmate-agent tunnelmate-peer /usr/local/bin/
+```
+
+To check the download first, the checksums are published beside it:
+
+```bash
+curl -fsSL {base_url}/v1/download/SHA256SUMS -o SHA256SUMS
+sha256sum -c --ignore-missing SHA256SUMS
+```
+
+`GET /v1/downloads` returns the same list as JSON, each entry carrying a
+`name`, a `size` and an absolute `url` — use that if you are automating this.
+
+The tarball holds three binaries:
+
+```
+tunnelmate-agent    publish a service        <- you need this
+tunnelmate-peer     consume a closed tunnel  <- and maybe this
+tunnelmated         the broker (only a server operator needs it)
+```
+
+They are statically linked against musl, so there is no libuv, no OpenSSL and
+no glibc version to match — any Linux kernel on that architecture runs them.
+Confirm yours did:
+
+```bash
+tunnelmate-agent -c /dev/null; echo "exit $?"   # prints a config error: it runs
+```
+
+If your architecture is not in the list above, build from source with step 2.
+Otherwise skip to step 3."""
+
+
+def _no_downloads_notice(base_url: str) -> str:
+    """Step 1 when the operator has published nothing.
+
+    Saying so plainly beats printing a download command that 404s: a reader who
+    tries the URL and fails has no way to tell a broken deployment from a
+    deliberate one.
+    """
+    return f"""### Step 1 — get the binaries
+
+This deployment publishes no pre-built binaries — `GET {base_url}/v1/downloads`
+returns an empty list — so build them from source with step 2. That is a
+choice by this broker's operator, not a fault; other deployments may publish
+them."""
 
 
 def render(settings: Settings, base_url: str) -> str:
@@ -28,6 +126,20 @@ def render(settings: Settings, base_url: str) -> str:
     # pip cannot install a subdirectory of a repository without the fragment,
     # and the .git suffix is what pip's VCS handler expects.
     sdk_spec = f"git+{src}.git#subdirectory=python-sdk"
+    version, arches = _published_releases(settings.release_dir)
+    download_section = (
+        _download_steps(base_url, version, arches) if version else _no_downloads_notice(base_url)
+    )
+    how_to_get_it = (
+        "The binary is written in C, but this broker publishes pre-built ones — "
+        "statically linked, so they run on any Linux of the right architecture "
+        "with nothing installed alongside them. Step 1 downloads one; building "
+        "from source is offered as step 2 and is not required."
+        if version
+        else "The binary is written in C and this deployment publishes no "
+        "pre-built ones, so you compile it from source once (about a minute). "
+        "Step 2 does exactly that."
+    )
 
     return f"""# TunnelMate
 
@@ -64,15 +176,13 @@ Read this before starting, because it decides how much work you are in for.
 
 **To publish a service you must run the `tunnelmate-agent` binary.** There is
 no pure-Python, browser or curl-only way to do it: the HTTP API creates the
-tunnel, but only the agent can carry traffic. The binary is written in C and is
-not distributed pre-built, so you compile it from source once (about a minute).
-Section "Setup, step by step" does exactly that.
+tunnel, but only the agent can carry traffic. {how_to_get_it}
 
 **To consume an `open` tunnel you install nothing.** It is an ordinary public
 TCP or UDP address. Use curl, a browser, psql, ssh, netcat, anything.
 
-**To consume a `closed` tunnel you need the `tunnelmate-peer` binary**, built
-by the same one-minute build, plus the tunnel's shared token.
+**To consume a `closed` tunnel you need the `tunnelmate-peer` binary**, which
+ships alongside the agent, plus the tunnel's shared token.
 
 The Python SDK is a convenience wrapper that supervises those binaries. It does
 not replace them and installing it alone is not enough.
@@ -138,9 +248,12 @@ This is the complete path from a bare machine to a public address. Every
 command is meant to be run as-is. The example exposes an HTTP service listening
 on `127.0.0.1:5675`; substitute your own host and port.
 
-### Step 1 — check the prerequisites
+{download_section}
 
-You need a Linux machine (or WSL) with outbound Internet access, and:
+### Step 2 — build from source instead (optional)
+
+Only needed if the download above did not cover you. You need a Linux machine
+(or WSL) with outbound Internet access, and:
 
   - a C17 compiler, CMake 3.16+, pkg-config
   - libuv development headers
@@ -150,7 +263,8 @@ You need a Linux machine (or WSL) with outbound Internet access, and:
 The OpenSSL floor is the one that catches people out. Ubuntu 24.04 LTS and
 Debian 12 ship OpenSSL 3.0, and the build stops at the configure step with a
 clear message. Ubuntu 24.10+, Debian 13+ and current Fedora/Arch are fine.
-Check with `openssl version` before starting.
+Check with `openssl version` before starting. If yours is older, download a
+release from step 1 instead of upgrading OpenSSL.
 
 On Debian or Ubuntu:
 
@@ -166,16 +280,11 @@ On Fedora:
 sudo dnf install -y gcc cmake pkgconf-pkg-config libuv-devel openssl-devel git python3
 ```
 
-### Step 2 — get the source
+Then:
 
 ```bash
 git clone {src}.git
 cd frpc-broker
-```
-
-### Step 3 — build
-
-```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel
 ```
@@ -183,22 +292,25 @@ cmake --build build --parallel
 That produces three binaries:
 
 ```
-build/broker/tunnelmated        the broker (only the server operator needs it)
 build/agent/tunnelmate-agent    publish a service        <- you need this
 build/peer/tunnelmate-peer      consume a closed tunnel  <- and maybe this
+build/broker/tunnelmated        the broker (only a server operator needs it)
 ```
 
-Put the two client binaries somewhere on your PATH:
+Put the two client binaries on your PATH:
 
 ```bash
 sudo install -m 0755 build/agent/tunnelmate-agent build/peer/tunnelmate-peer /usr/local/bin/
-tunnelmate-agent -c /dev/null; echo "exit $?"   # prints a config error: it runs
 ```
 
-If the build fails at `find_package(OpenSSL 3.2 REQUIRED)`, your OpenSSL is too
-old — see step 1. If it fails on libuv, `libuv1-dev` is missing.
+If it fails at `find_package(OpenSSL 3.2 REQUIRED)`, your OpenSSL is too old.
+If it fails on libuv, `libuv1-dev` is missing.
 
-### Step 4 — get the broker's certificate
+Add `-DTUNNELMATE_STATIC=ON` to produce the same portable binaries this broker
+publishes; that needs a musl toolchain and static libuv/OpenSSL, so it is for
+whoever is building releases, not for a one-off local build.
+
+### Step 3 — get the broker's certificate
 
 The agent verifies the broker's TLS certificate, and this deployment may be
 using a self-signed one, which your system trust store does not know. Fetch it
@@ -216,7 +328,7 @@ Do not set `agent.verify_ca = false` to make an error go away. That disables
 authentication of the broker entirely and lets anything on the path
 impersonate it.
 
-### Step 5 — create the tunnel
+### Step 4 — create the tunnel
 
 No credential is needed for this call.
 
@@ -242,7 +354,7 @@ Response — **save it now, the secrets are never shown again**:
 }}
 ```
 
-### Step 6 — write the agent config
+### Step 5 — write the agent config
 
 Create `agent.conf`. Use mode 0600: it holds a secret, and other local users
 can read command lines out of /proc, which is why nothing here is a flag.
@@ -265,10 +377,10 @@ agent.log_level = info
 ```
 
 `agent.local_host`/`agent.local_port` are **your** service. `agent.broker_host`
-and `agent.broker_port` are this broker. Drop `agent.ca_path` if step 4
+and `agent.broker_port` are this broker. Drop `agent.ca_path` if step 3
 returned 404. For UDP see the UDP section — it needs one extra key.
 
-### Step 7 — run the agent
+### Step 6 — run the agent
 
 The flag is `-c`, with one dash. `--config` is not accepted and exits 1.
 
@@ -284,7 +396,7 @@ To run it as a service instead, use any supervisor you like — the binary stays
 in the foreground and logs to stderr, so systemd, s6 or Docker all work
 unmodified.
 
-### Step 8 — verify
+### Step 7 — verify
 
 From anywhere on the Internet:
 
@@ -302,7 +414,7 @@ curl {base_url}/v1/tunnels/tun_UE7u16l_zv67CsKO \\
 `"online": true` means the agent is connected. If it is false, the agent is not
 running or its secret is wrong; connections will be accepted and then closed.
 
-### Step 9 — clean up
+### Step 8 — clean up
 
 Deleting releases the public port and terminates live connections. Do it when
 you are done; ports are a shared finite resource.
@@ -317,8 +429,8 @@ If you simply stop the agent without deleting, the tunnel lingers until its
 
 ## The same thing with the Python SDK
 
-The SDK does steps 5 to 9 for you, plus lease renewal and secret file hygiene.
-You still need the binaries from steps 1 to 3.
+The SDK does steps 4 to 8 for you, plus lease renewal and secret file hygiene.
+You still need the binaries from step 1.
 
 ```bash
 python3 -m venv .venv
@@ -479,6 +591,8 @@ GET    /health/live                             process is up
 GET    /health/ready                            broker IPC + database are up
 GET    /v1/status                               public counters
 GET    /v1/broker-certificate                   broker TLS certificate, PEM
+GET    /v1/downloads                            published release binaries
+GET    /v1/download/{{name}}                      fetch one release file
 GET    /llms.txt                                this document
 GET    /openapi.json                            machine-readable API schema
 ```
@@ -500,6 +614,7 @@ Every error has the same shape:
 | `BROKER_UNAVAILABLE` | 503 | Data plane is down. Retry with backoff; existing tunnels may still relay. |
 | `TUNNEL_CREATE_FAILED` | 503 | Often port-range exhaustion. Retry later. |
 | `CERTIFICATE_UNAVAILABLE` | 404 | No self-signed certificate is published; use the system trust store. |
+| `DOWNLOAD_UNAVAILABLE` | 404 | No such release file. Re-read `/v1/downloads` for the current names. |
 
 `request_id` is also returned as the `X-Request-ID` header. Quote it when
 reporting a problem.
@@ -509,8 +624,9 @@ reporting a problem.
 | Symptom | Cause |
 |---|---|
 | `usage: tunnelmate-agent [-c CONFIG]`, exit 1 | You used `--config`. It is `-c`. |
-| CMake stops on `OpenSSL 3.2` | System OpenSSL is older than 3.2. See step 1. |
-| Agent exits complaining about a certificate | Missing or wrong `agent.ca_path`. Redo step 4. |
+| Downloaded binary: `cannot execute binary file` | Wrong architecture. Match `uname -m` against `/v1/downloads`. |
+| CMake stops on `OpenSSL 3.2` | System OpenSSL is older than 3.2. Download a release (step 1) instead. |
+| Agent exits complaining about a certificate | Missing or wrong `agent.ca_path`. Redo step 3. |
 | Agent runs but `"online": false` | Wrong `agent_secret` or `tunnel_id`, or it cannot reach port {control_port} outbound. |
 | `online: true` but connections hang | The agent reaches the broker but not your service. Check `agent.local_host`/`local_port`. |
 | Connection accepted then immediately closed | No agent is connected for that tunnel. |

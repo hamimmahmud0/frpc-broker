@@ -9,6 +9,17 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 option(TUNNELMATE_SANITIZE "Build with ASan/UBSan" OFF)
+option(TUNNELMATE_STATIC "Link fully static, for portable release binaries" OFF)
+
+if(TUNNELMATE_STATIC)
+  # Both find_package(OpenSSL) and pkg_check_modules resolve to the shared
+  # library whenever one is installed, and a single .so on the link line makes
+  # `-static` fail outright ("attempted static link of dynamic object"). Force
+  # every lookup below to consider archives only.
+  set(OPENSSL_USE_STATIC_LIBS ON)
+  set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+  add_link_options(-static)
+endif()
 
 add_compile_options(-Wall -Wextra -Wpedantic -Wshadow -Wformat=2)
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")

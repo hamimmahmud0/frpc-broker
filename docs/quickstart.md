@@ -40,13 +40,37 @@ front of the API for HTTPS; the API itself binds loopback only.
 > publicly trusted certificate whose SAN matches your public host before anyone
 > else relies on the service.
 
+### Publish release binaries (optional)
+
+Users of your broker otherwise have to compile the agent themselves, which
+needs OpenSSL 3.2 — not available on Ubuntu 24.04 LTS or Debian 12. Build
+static binaries once and serve them:
+
+```bash
+sudo ./scripts/build-release.sh x86_64 aarch64
+sudo install -m 0644 dist/*.tar.gz dist/SHA256SUMS /var/lib/tunnelmate/releases/
+```
+
+They appear at `/v1/downloads`, and `/llms.txt` starts telling readers to
+download rather than build. See [releases.md](releases.md).
+
 ## Expose a service
+
+If the broker publishes binaries, take them from there — nothing to compile:
+
+```bash
+curl -fsSL http://203.0.113.10/v1/download/tunnelmate-0.1.0-linux-$(uname -m).tar.gz | tar xz
+cd tunnelmate-0.1.0-linux-$(uname -m)
+sudo install -m 0755 tunnelmate-agent tunnelmate-peer /usr/local/bin/
+```
+
+Then the SDK, which supervises them:
 
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install ./python-sdk
-export TUNNELMATE_AGENT_BINARY=/usr/local/sbin/tunnelmate-agent
-export TUNNELMATE_PEER_BINARY=/usr/local/sbin/tunnelmate-peer
+export TUNNELMATE_AGENT_BINARY=/usr/local/bin/tunnelmate-agent
+export TUNNELMATE_PEER_BINARY=/usr/local/bin/tunnelmate-peer
 ```
 
 With a service listening on `127.0.0.1:5675`:

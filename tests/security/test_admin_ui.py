@@ -306,8 +306,9 @@ def test_llms_txt_has_no_unresolved_placeholders(client: TestClient) -> None:
     import re
 
     body = client.get("/llms.txt").text
-    # {id} is an intentional path placeholder; nothing else should survive.
-    leftover = {m for m in re.findall(r"\{[a-z_]+\}", body)} - {"{id}"}
+    # {id} and {name} are intentional path placeholders in the endpoint
+    # reference; nothing else should survive.
+    leftover = {m for m in re.findall(r"\{[a-z_]+\}", body)} - {"{id}", "{name}"}
     assert not leftover, leftover
 
 
@@ -404,3 +405,111 @@ def test_broker_certificate_absent_is_a_clean_404(tmp_path: Path, client: TestCl
     response = client.get("/v1/broker-certificate")
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "CERTIFICATE_UNAVAILABLE"
+
+
+def _releases(tmp_path: Path, client: TestClient) -> Path:
+    """Point the running app at a release directory and return it."""
+    releases = tmp_path / "releases"
+    releases.mkdir()
+    client.app.state.settings.release_dir = releases
+    return releases
+
+
+def test_downloads_index_lists_files_with_absolute_urls(
+    tmp_path: Path, client: TestClient
+) -> None:
+    """A relative name would make the caller guess how to fetch it."""
+    releases = _releases(tmp_path, client)
+    (releases / "tunnelmate-0.1.0-linux-x86_64.tar.gz").write_bytes(b"payload")
+    (releases / "SHA256SUMS").write_text("abc  ./tunnelmate-0.1.0-linux-x86_64.tar.gz\n")
+
+    body = client.get("/v1/downloads", headers={"X-Forwarded-Host": "tunnel.example.com"}).json()
+    names = {item["name"] for item in body["items"]}
+    assert "tunnelmate-0.1.0-linux-x86_64.tar.gz" in names
+    for item in body["items"]:
+        assert item["url"].startswith("http://tunnel.example.com/v1/download/")
+    assert body["checksums"].endswith("/v1/download/SHA256SUMS")
+
+
+def test_downloads_index_is_empty_not_broken_without_a_release_dir(
+    tmp_path: Path, client: TestClient
+) -> None:
+    """Most deployments publish nothing; that is a state, not a fault."""
+    client.app.state.settings.release_dir = tmp_path / "nothing-here"
+    body = client.get("/v1/downloads").json()
+    assert body["items"] == []
+    assert body["checksums"] is None
+
+
+def test_download_serves_the_published_bytes(tmp_path: Path, client: TestClient) -> None:
+    releases = _releases(tmp_path, client)
+    (releases / "tunnelmate-0.1.0-linux-x86_64.tar.gz").write_bytes(b"\x1f\x8bpayload")
+
+    response = client.get("/v1/download/tunnelmate-0.1.0-linux-x86_64.tar.gz")
+    assert response.status_code == 200
+    assert response.content == b"\x1f\x8bpayload"
+
+
+def test_download_refuses_to_walk_out_of_the_release_directory(
+    tmp_path: Path, client: TestClient
+) -> None:
+    """The name comes from the URL, so traversal is the obvious attack.
+
+    Encoded separators are what actually reaches the handler after Starlette
+    decodes the path, so they are tested alongside the plain form.
+    """
+    releases = _releases(tmp_path, client)
+    (tmp_path / "secret.txt").write_text("private key material")
+    (releases / "ok.tar.gz").write_bytes(b"fine")
+
+    for name in ("../secret.txt", "..%2Fsecret.txt", "%2e%2e%2fsecret.txt", ".hidden", "sub/x"):
+        response = client.get(f"/v1/download/{name}")
+        assert response.status_code == 404, name
+        assert "private key material" not in response.text, name
+
+
+def test_download_refuses_a_symlink_pointing_outside(tmp_path: Path, client: TestClient) -> None:
+    """A whitelisted name is not enough if the file itself escapes."""
+    releases = _releases(tmp_path, client)
+    (tmp_path / "outside.bin").write_text("not for publication")
+    (releases / "escape.tar.gz").symlink_to(tmp_path / "outside.bin")
+
+    response = client.get("/v1/download/escape.tar.gz")
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "DOWNLOAD_UNAVAILABLE"
+
+
+def test_llms_txt_offers_the_prebuilt_download_path(tmp_path: Path, client: TestClient) -> None:
+    """Building needs OpenSSL 3.2, which two current LTS distros do not ship.
+
+    A reader stuck there has no way forward from a build-only document, so the
+    download route has to be stated before the build, not after it.
+    """
+    releases = _releases(tmp_path, client)
+    (releases / "tunnelmate-0.1.0-linux-x86_64.tar.gz").write_bytes(b"x")
+    (releases / "tunnelmate-0.1.0-linux-aarch64.tar.gz").write_bytes(b"x")
+
+    body = client.get("/llms.txt").text
+    assert "/v1/download/tunnelmate-0.1.0-linux-$ARCH.tar.gz" in body
+    # Both published architectures are named, or half the readers cannot tell
+    # whether theirs is covered.
+    assert "tunnelmate-0.1.0-linux-x86_64.tar.gz" in body
+    assert "tunnelmate-0.1.0-linux-aarch64.tar.gz" in body
+    assert body.index("/v1/downloads") < body.index("git clone")
+
+
+def test_llms_txt_never_advertises_a_download_that_does_not_exist(
+    tmp_path: Path, client: TestClient
+) -> None:
+    """An operator who publishes nothing must not get a document full of 404s.
+
+    The version in the filename is read from disk for exactly this reason, so
+    the empty case has to degrade to "build from source" rather than to a
+    plausible-looking URL.
+    """
+    client.app.state.settings.release_dir = tmp_path / "empty"
+    body = client.get("/llms.txt").text
+    assert "publishes no pre-built binaries" in body
+    assert "/v1/download/tunnelmate-" not in body
+    # The build route must still be fully present as the way forward.
+    assert "git clone" in body and "cmake -S . -B build" in body

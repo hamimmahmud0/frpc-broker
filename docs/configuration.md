@@ -102,6 +102,7 @@ installer. Example: [deployment/example.env](../deployment/example.env).
 | `TUNNELMATE_ADMIN_PASSWORD` | — | Minimum 12 characters. There is no default administrator. |
 | `TUNNELMATE_SOURCE_URL` | upstream repository | Where `/llms.txt` tells readers to clone and `pip install` from. Point it at your fork if you run one. |
 | `TUNNELMATE_BROKER_CERT` | `/etc/tunnelmate/certs/broker.crt` | Certificate served at `/v1/broker-certificate` so agents can verify a self-signed deployment. Certificate only — the endpoint refuses to serve anything containing a private key. |
+| `TUNNELMATE_RELEASE_DIR` | `/var/lib/tunnelmate/releases` | Tarballs offered at `/v1/downloads`. Empty or missing is fine: `/llms.txt` then tells readers to build from source instead. See [releases.md](releases.md). |
 
 ### Abuse limits
 
