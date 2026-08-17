@@ -1,8 +1,58 @@
+# TunnelMate reverse proxy.
+#
+# The control API is meant to be public: anonymous tunnel creation, the service
+# registry and /llms.txt are the product. The operations console is not, so it
+# is refused on the public listener and reached over an SSH tunnel instead
+# (ssh -L 9000:127.0.0.1:9000 host, then http://127.0.0.1:9000/admin).
+#
+# Pick ONE of the two blocks below.
+
+# ---------------------------------------------------------------------------
+# A. You have a DNS name. Preferred: Caddy obtains a trusted certificate.
+# ---------------------------------------------------------------------------
 tunnel.example.com {
     encode zstd gzip
-    reverse_proxy 127.0.0.1:8000
+
+    # Operations console and admin API stay off the public listener. Both
+    # prefixes matter: /admin* is the console, /v1/admin* is its API.
+    @admin path /admin* /v1/admin*
+    respond @admin "Not available on the public endpoint." 404
+
+    reverse_proxy 127.0.0.1:9000 {
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Host {host}
+    }
+
     header {
         Strict-Transport-Security "max-age=31536000; includeSubDomains"
         -Server
     }
+
+    log {
+        output file /var/log/caddy/tunnelmate.log
+        format json
+    }
 }
+
+# ---------------------------------------------------------------------------
+# B. IP address only, no DNS name. Plain HTTP on port 80.
+#
+# There is no way to obtain a publicly trusted certificate for a bare IP from
+# an ACME CA, so this is unencrypted. That is acceptable for the anonymous
+# public surface — tunnel creation returns secrets, so callers who care should
+# use a DNS name and block A instead. It is NOT acceptable for the console,
+# which is why /admin is refused here too.
+# ---------------------------------------------------------------------------
+# :80 {
+#     encode zstd gzip
+#
+#     @admin path /admin* /v1/admin*
+#     respond @admin "Not available on the public endpoint. Use an SSH tunnel." 404
+#
+#     reverse_proxy 127.0.0.1:9000 {
+#         header_up X-Forwarded-Proto {scheme}
+#         header_up X-Forwarded-Host {host}
+#     }
+#
+#     header -Server
+# }

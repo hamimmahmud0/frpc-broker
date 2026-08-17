@@ -31,6 +31,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from .broker import BrokerClient, BrokerError, BrokerUnavailable
 from .config import Settings
 from .db import Database
+from .llms import render as render_llms_txt
 from .metrics import SystemMetrics
 from .models import (
     AdminAnnouncementPatch,
@@ -1190,21 +1191,23 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {"status": "deleted", "tunnel_id": tunnel_id}
 
     @app.get("/llms.txt", response_class=PlainTextResponse, operation_id="llms_txt")
-    async def llms_txt() -> PlainTextResponse:
-        text = f"""# TunnelMate
+    async def llms_txt(request: Request) -> PlainTextResponse:
+        """Self-describing usage document, public and unauthenticated.
 
-TunnelMate exposes TCP and UDP services behind NAT through an outbound encrypted agent connection.
-Open tunnels have a public tcp:// or udp:// address. Closed tunnels require tunnelmate-peer and a tunnel-scoped shared token.
-Create tunnels anonymously at POST /v1/tunnels; no account or global API key is required.
-Tunnel ownership uses a one-time management_secret capability returned at creation.
-Search the public service registry at GET /v1/announce/search.
-OpenAPI: /openapi.json
-Interactive API docs: /docs and /redoc
-Python SDK package: tunnelmate
-Agent transport control port: {settings.broker_control_port}
-Limitations: v1 forwards TCP byte streams and UDP datagrams; interrupted TCP sessions cannot resume; UDP source addresses are represented by agent-side flow mappings.
-"""
-        return PlainTextResponse(text, media_type="text/plain; charset=utf-8")
+        Rendered against the origin the caller actually reached us on, so the
+        examples are copy-pasteable instead of naming a host the reader may not
+        be able to resolve.
+        """
+        forwarded_proto = request.headers.get("x-forwarded-proto", "").split(",")[0].strip()
+        forwarded_host = request.headers.get("x-forwarded-host", "").split(",")[0].strip()
+        scheme = forwarded_proto or request.url.scheme
+        netloc = forwarded_host or request.headers.get("host") or request.url.netloc
+        base_url = f"{scheme}://{netloc}".rstrip("/")
+        return PlainTextResponse(
+            render_llms_txt(settings, base_url),
+            media_type="text/plain; charset=utf-8",
+            headers={"Cache-Control": "public, max-age=300"},
+        )
 
     @app.get("/admin/login", response_class=HTMLResponse, include_in_schema=False)
     async def admin_login_page(request: Request) -> Any:

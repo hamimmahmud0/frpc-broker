@@ -229,3 +229,83 @@ def test_admin_search_filters_tunnels(client: TestClient) -> None:
     assert response.status_code == 200
     items = response.json()["items"]
     assert [item["tunnel_id"] for item in items] == [wanted["tunnel_id"]]
+
+
+# ---------------------------------------------------------------------------
+# llms.txt
+# ---------------------------------------------------------------------------
+
+
+def test_llms_txt_is_public_and_plain_text(client: TestClient) -> None:
+    """It must be readable with no credential at all — that is the point."""
+    response = client.get("/llms.txt")
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("text/plain")
+    assert "charset=utf-8" in response.headers["content-type"]
+
+
+def test_llms_txt_documents_the_whole_service(client: TestClient) -> None:
+    """An agent should be able to drive the API from this file alone."""
+    body = client.get("/llms.txt").text
+
+    # Enough to actually make requests.
+    for fragment in (
+        "/v1/tunnels",
+        "/v1/announce",
+        "/v1/announce/search",
+        "X-Tunnel-Management-Secret",
+        "openapi.json",
+        "agent.tunnel_id",
+        "tunnelmate-peer",
+    ):
+        assert fragment in body, fragment
+
+    # Enough to understand the capability model.
+    for fragment in ("agent_secret", "management_secret", "shared_token"):
+        assert fragment in body, fragment
+
+    # Enough to handle failure.
+    for fragment in ("TUNNEL_NOT_FOUND", "RATE_LIMITED", "BROKER_UNAVAILABLE", "request_id"):
+        assert fragment in body, fragment
+
+    # The honest parts, which matter most for an autonomous caller.
+    assert "not end-to-end" in body
+    assert "do not resume" in body.lower()
+    assert "Important limitations" in body
+    assert "Guidance for automated agents" in body
+
+
+def test_llms_txt_leaks_no_secret(client: TestClient) -> None:
+    """It is public, so it must never carry a real credential."""
+    tunnel = make_tunnel(client)
+    body = client.get("/llms.txt").text
+    assert tunnel["agent_secret"] not in body
+    assert tunnel["management_secret"] not in body
+    assert tunnel["tunnel_id"] not in body
+    # The admin password must not appear either.
+    assert ADMIN_PASSWORD not in body
+
+
+def test_llms_txt_uses_the_origin_the_caller_reached(client: TestClient) -> None:
+    """Examples must name a host the reader can actually resolve."""
+    direct = client.get("/llms.txt").text
+    assert "testserver" in direct
+
+    # Behind a reverse proxy the forwarded origin wins, so copy-pasted examples
+    # point at the public address rather than the loopback bind.
+    proxied = client.get(
+        "/llms.txt",
+        headers={"X-Forwarded-Proto": "https", "X-Forwarded-Host": "tunnel.example.com"},
+    ).text
+    assert "https://tunnel.example.com" in proxied
+    assert "https://tunnel.example.com/openapi.json" in proxied
+
+
+def test_llms_txt_has_no_unresolved_placeholders(client: TestClient) -> None:
+    """A stray format field would hand an agent a literal brace as a value."""
+    import re
+
+    body = client.get("/llms.txt").text
+    # {id} is an intentional path placeholder; nothing else should survive.
+    leftover = {m for m in re.findall(r"\{[a-z_]+\}", body)} - {"{id}"}
+    assert not leftover, leftover
