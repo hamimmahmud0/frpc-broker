@@ -37,6 +37,22 @@ sudo TUNNELMATE_PUBLIC_HOST=tunnel.example.com \
   deployment/scripts/tunnelmate-install
 ```
 
+`TUNNELMATE_PUBLIC_HOST` is what appears in every `peer_address`, so set it to
+whatever consumers will actually dial. A bare IP works and needs no DNS:
+
+```bash
+sudo TUNNELMATE_PUBLIC_HOST=203.0.113.10 \
+  TUNNELMATE_ADMIN_PASSWORD='a unique long password' \
+  TUNNELMATE_API_PORT=9000 \
+  deployment/scripts/tunnelmate-install
+```
+
+giving `tcp://203.0.113.10:20000`. The installer picks the matching
+certificate SAN type (`IP:` or `DNS:`) automatically, verifies both services
+are genuinely running, and fails loudly rather than reporting success when
+something else already owns the API port. Re-running it is safe and restarts
+the services so configuration changes take effect.
+
 The bootstrap self-signs the data-plane certificate only when none is
 supplied; replace it with a publicly trusted certificate before production.
 Put the included Caddyfile in front of the API for HTTPS.
