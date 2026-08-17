@@ -133,7 +133,9 @@ static void local_recv_cb(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
                           const struct sockaddr *addr, unsigned flags) {
     (void)flags;
     tm_peer *p = (tm_peer *)handle->data;
-    if (nread <= 0) { free(buf->base); return; }
+    /* nread==0 with an address is a legal zero-length datagram from the local
+       application; only a NULL address means "nothing more to read". */
+    if (nread < 0 || (nread == 0 && addr == NULL)) { free(buf->base); return; }
     if (p->udp_closing || !p->udp_authed) { free(buf->base); return; }
     size_t plen = (size_t)nread;
     if (plen > (size_t)p->cfg.udp_max_datagram_size) { free(buf->base); return; }

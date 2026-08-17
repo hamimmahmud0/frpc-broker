@@ -127,9 +127,11 @@ static void flow_alloc_cb(uv_handle_t *handle, size_t suggested, uv_buf_t *buf) 
 
 static void flow_recv_cb(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
                          const struct sockaddr *addr, unsigned flags) {
-    (void)addr; (void)flags;
+    (void)flags;
     tm_alflow *f = (tm_alflow *)handle->data;
-    if (nread <= 0) { free(buf->base); return; }
+    /* nread==0 with an address is a legal zero-length reply from the service;
+       only a NULL address means "nothing more to read". */
+    if (nread < 0 || (nread == 0 && addr == NULL)) { free(buf->base); return; }
     tm_agent_app *a = f->a;
     if (a->udp_closing || !a->udp_authed) { free(buf->base); return; }
     uint64_t now = tm_now_ms();

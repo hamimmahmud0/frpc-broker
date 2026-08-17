@@ -212,7 +212,9 @@ int tm_broker_run(tm_broker *b) {
     b->loop = uv_default_loop();
 
     tm_control_listener_start(b);
-    tm_ipc_start(b);
+    /* Without IPC the control plane can never manage this broker; fail loudly
+       at startup rather than serving an unmanageable process. */
+    if (tm_ipc_start(b) != TM_OK) return 1;
 
     uv_signal_t sigint, sigterm;
     uv_signal_init(b->loop, &sigint);
@@ -251,7 +253,8 @@ int main(int argc, char **argv) {
     tm_log_free(b->log);
     b->log = tm_log_new(2, "broker", b->cfg.log_level_parsed);
 
-    if (b->cfg.public_port_end <= b->cfg.public_port_start) {
+    /* A single-port range (start == end) is legal and useful for tests. */
+    if (b->cfg.public_port_end < b->cfg.public_port_start) {
         tm_log_error(b->log, "bad_port_range", NULL, NULL, "%u..%u",
                      (unsigned)b->cfg.public_port_start,
                      (unsigned)b->cfg.public_port_end);

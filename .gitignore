@@ -1,5 +1,11 @@
 build/
+build-*/
 *.log
 *.o
 *.a
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.venv*/
 vps_credential.txt

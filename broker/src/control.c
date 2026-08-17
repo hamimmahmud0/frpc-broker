@@ -170,18 +170,22 @@ static void agent_register(tm_conn *c, tm_frame *f) {
     id[idlen] = '\0';
 
     tm_tunnel *tun = tm_tunnel_find(b, id);
-    if (!tun || !tun->enabled) {
-        b->failed_auths++;
-        send_frame_raw(b, c->io, TM_MSG_REGISTER_ERROR, 0, "unknown tunnel");
-        conn_close(c, "register rejected");
-        return;
-    }
+
+    /* An unknown tunnel and a wrong secret must be indistinguishable, in both
+       the reply text and the work performed. Always derive the HMAC and run a
+       constant-time comparison — against an unsatisfiable reference when the
+       tunnel does not exist — so registration cannot be used to enumerate
+       tunnel IDs. */
+    static const char never_matches[65] =
+        "0000000000000000000000000000000000000000000000000000000000000000";
     uint8_t hmac[32];
     char hex[65];
     tm_hmac_sha256(b->hmac_key, sizeof(b->hmac_key),
                    f->payload + 2 + idlen, slen, hmac);
     tm_sha256_hex(hmac, 32, hex);
-    if (!tm_ct_eq_hex(hex, tun->agent_secret_hmac)) {
+    const char *expected = (tun && tun->enabled) ? tun->agent_secret_hmac : never_matches;
+    bool secret_ok = tm_ct_eq_hex(hex, expected);
+    if (!tun || !tun->enabled || !secret_ok) {
         b->failed_auths++;
         send_frame_raw(b, c->io, TM_MSG_REGISTER_ERROR, 0, "bad credentials");
         conn_close(c, "register rejected");
@@ -260,19 +264,21 @@ static void peer_auth(tm_conn *c, tm_frame *f) {
     id[idlen] = '\0';
 
     tm_tunnel *tun = tm_tunnel_find(b, id);
-    if (!tun || !tun->closed || !tun->enabled ||
-        tun->shared_token_hmac[0] == '\0') {
-        b->failed_auths++;
-        send_frame_raw(b, c->io, TM_MSG_AUTH_ERROR, 0, "bad credentials");
-        conn_close(c, "bad auth");
-        return;
-    }
+
+    /* As in register_frame: do the same work and give the same answer whether
+       or not the tunnel exists, so a peer cannot probe for valid tunnel IDs. */
+    static const char never_matches[65] =
+        "0000000000000000000000000000000000000000000000000000000000000000";
+    bool usable = tun && tun->closed && tun->enabled &&
+                  tun->shared_token_hmac[0] != '\0';
     uint8_t hmac[32];
     char hex[65];
     tm_hmac_sha256(b->hmac_key, sizeof(b->hmac_key),
                    f->payload + 2 + idlen, slen, hmac);
     tm_sha256_hex(hmac, 32, hex);
-    if (!tm_ct_eq_hex(hex, tun->shared_token_hmac)) {
+    const char *expected = usable ? tun->shared_token_hmac : never_matches;
+    bool token_ok = tm_ct_eq_hex(hex, expected);
+    if (!usable || !token_ok) {
         b->failed_auths++;
         send_frame_raw(b, c->io, TM_MSG_AUTH_ERROR, 0, "bad credentials");
         conn_close(c, "bad auth");

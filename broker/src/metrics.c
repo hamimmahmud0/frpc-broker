@@ -43,6 +43,7 @@ char *tm_metrics_json(tm_broker *b, bool include_tunnels) {
     cJSON_AddNumberToObject(now, "protocol_errors", (double)b->protocol_errors);
     cJSON_AddNumberToObject(now, "agent_reconnects", (double)b->agent_reconnects);
     cJSON_AddNumberToObject(now, "conns_total", (double)b->conns_total);
+    cJSON_AddNumberToObject(now, "conns_rate_limited", (double)b->conns_rate_limited);
     cJSON_AddNumberToObject(now, "udp_dropped_queue_full",
                             (double)b->udp_dropped_queue_full);
     cJSON_AddNumberToObject(now, "udp_dropped_oversize",

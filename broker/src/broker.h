@@ -79,6 +79,11 @@ struct tm_tunnel {
     /* TCP */
     uv_tcp_t listener;
     bool listener_open;
+    /* uv_close() is asynchronous: the handle memory may not be re-initialised
+       until its close callback runs. A start requested while a close is in
+       flight is deferred to that callback. */
+    bool listener_closing;
+    bool listener_restart_pending;
 
     /* UDP */
     uv_udp_t udp_sock;
@@ -241,6 +246,7 @@ struct tm_broker {
     uint64_t protocol_errors;
     uint64_t agent_reconnects;
     uint64_t conns_total;
+    uint64_t conns_rate_limited;
     uint64_t udp_dropped_queue_full;
     uint64_t udp_dropped_oversize;
     uint64_t udp_dropped_rate_limit;
@@ -319,7 +325,7 @@ void tm_metrics_start(tm_broker *b);
 char *tm_metrics_json(tm_broker *b, bool include_tunnels);
 
 /* ipc.c */
-void tm_ipc_start(tm_broker *b);
+tm_status tm_ipc_start(tm_broker *b);
 
 /* main helpers */
 int tm_broker_run(tm_broker *b);

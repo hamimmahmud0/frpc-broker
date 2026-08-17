@@ -145,9 +145,14 @@ static void ctl_read(tm_io *io, const uint8_t *data, size_t len, void *arg) {
             break;
         }
         case TM_MSG_GOING_AWAY:
-            tm_log_info(a->log, "going_away", NULL, NULL, "broker shutting down");
-            tm_agent_shutdown(a);
-            break;
+            /* GOING_AWAY retires this broker connection, not the agent. Drop
+               the session and reconnect with backoff so the tunnel comes back
+               by itself once the broker returns. */
+            tm_log_info(a->log, "going_away", NULL, NULL,
+                        "broker is shutting down; will reconnect");
+            tm_frame_free(f);
+            tm_agent_disconnect(a, "going away");
+            return;
         default:
             break;
         }

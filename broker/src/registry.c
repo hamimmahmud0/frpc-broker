@@ -56,8 +56,15 @@ tm_tunnel *tm_tunnel_create(tm_broker *b, const char *id, tm_proto proto,
     if (b->tunnel_count >= b->cfg.max_tunnels) return NULL;
     if (tm_tunnel_find(b, id)) return NULL;
     if (strlen(id) > TM_TUNNEL_ID_LEN) return NULL;
-    uint16_t port = tm_port_alloc(b, proto, prefer_port);
-    if (!port) return NULL;
+    /* A closed TCP tunnel has no public listener, so it must not consume a
+       public port. Closed UDP still needs one: it is the DTLS endpoint the
+       authenticated peer connects to. */
+    bool needs_public_port = !(closed && proto == TM_PROTO_TCP);
+    uint16_t port = 0;
+    if (needs_public_port) {
+        port = tm_port_alloc(b, proto, prefer_port);
+        if (!port) return NULL;
+    }
 
     tm_tunnel *t = tm_xcalloc(1, sizeof(*t));
     snprintf(t->id, sizeof(t->id), "%s", id);

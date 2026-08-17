@@ -39,6 +39,23 @@ const char *tm_addr_str(const struct sockaddr *sa) {
     return buf[idx];
 }
 
+bool tm_addr_eq_ip(const struct sockaddr *a, const struct sockaddr *b) {
+    if (!a || !b || a->sa_family != b->sa_family) return false;
+    if (a->sa_family == AF_INET) {
+        const struct sockaddr_in *x = (const struct sockaddr_in *)a;
+        const struct sockaddr_in *y = (const struct sockaddr_in *)b;
+        return x->sin_addr.s_addr == y->sin_addr.s_addr;
+    }
+    if (a->sa_family == AF_INET6) {
+        const struct sockaddr_in6 *x = (const struct sockaddr_in6 *)a;
+        const struct sockaddr_in6 *y = (const struct sockaddr_in6 *)b;
+        return memcmp(&x->sin6_addr, &y->sin6_addr, sizeof(x->sin6_addr)) == 0;
+    }
+    /* AF_UNSPEC (peer address unavailable): treat all such peers as one bucket
+       rather than as unlimited distinct sources. */
+    return a->sa_family == AF_UNSPEC;
+}
+
 bool tm_addr_eq(const struct sockaddr *a, const struct sockaddr *b) {
     if (!a || !b || a->sa_family != b->sa_family) return false;
     if (a->sa_family == AF_INET) {

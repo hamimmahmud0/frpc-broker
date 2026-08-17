@@ -207,9 +207,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        # frame-ancestors covers modern browsers; X-Frame-Options covers the rest.
+        response.headers["X-Frame-Options"] = "DENY"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; style-src 'self'; script-src 'self'; "
-            "img-src 'self' data:; frame-ancestors 'none'"
+            "img-src 'self' data:; frame-ancestors 'none'; "
+            "base-uri 'none'; form-action 'self'; object-src 'none'"
         )
         return response
 
@@ -222,10 +225,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
+        # Pydantic puts the original exception object in "ctx", which is not JSON
+        # serializable, and echoes the offending input, which is attacker
+        # controlled and unbounded. Report only bounded, serializable fields.
+        details = [
+            {
+                "loc": [str(part) for part in error.get("loc", ())],
+                "msg": str(error.get("msg", ""))[:200],
+                "type": str(error.get("type", ""))[:100],
+            }
+            for error in exc.errors()[:20]
+        ]
         return JSONResponse(
             {
                 **error_payload(request, "VALIDATION_ERROR", "Request validation failed."),
-                "details": exc.errors(),
+                "details": details,
             },
             status_code=422,
         )

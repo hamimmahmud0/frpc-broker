@@ -1,6 +1,7 @@
 #include "broker.h"
 #include "tunnelmate/cJSON.h"
 #include "tunnelmate/crypto.h"
+#include <sys/un.h>
 #include <unistd.h>
 
 /* IPC: newline-delimited JSON over a unix socket. Ops:
@@ -356,19 +357,33 @@ static void ipc_on_conn(uv_stream_t *server, int status) {
     uv_read_start((uv_stream_t *)&pc->pipe, ipc_conn_alloc, ipc_conn_read);
 }
 
-void tm_ipc_start(tm_broker *b) {
+tm_status tm_ipc_start(tm_broker *b) {
+    /* sun_path is a fixed-size field; a longer path would be silently
+       truncated and bind somewhere the control plane will never find. */
+    size_t path_len = strlen(b->cfg.broker_socket);
+    if (path_len >= sizeof(((struct sockaddr_un *)0)->sun_path)) {
+        tm_log_error(b->log, "ipc_path_too_long", "socket", NULL,
+                     "%zu bytes, maximum %zu", path_len,
+                     sizeof(((struct sockaddr_un *)0)->sun_path) - 1);
+        return TM_ERR;
+    }
     unlink(b->cfg.broker_socket);
     uv_pipe_init(b->loop, &b->ipc_pipe, 0);
     b->ipc_pipe.data = b;
-    if (uv_pipe_bind(&b->ipc_pipe, b->cfg.broker_socket) != 0) {
-        tm_log_error(b->log, "ipc_bind_failed", NULL, NULL, "%s", b->cfg.broker_socket);
-        return;
+    int r = uv_pipe_bind(&b->ipc_pipe, b->cfg.broker_socket);
+    if (r != 0) {
+        tm_log_error(b->log, "ipc_bind_failed", "socket", NULL, "%s: %s",
+                     b->cfg.broker_socket, uv_strerror(r));
+        return TM_ERR;
     }
-    if (uv_listen((uv_stream_t *)&b->ipc_pipe, 16, ipc_on_conn) != 0) {
-        tm_log_error(b->log, "ipc_listen_failed", NULL, NULL, "%s", b->cfg.broker_socket);
-        return;
+    r = uv_listen((uv_stream_t *)&b->ipc_pipe, 16, ipc_on_conn);
+    if (r != 0) {
+        tm_log_error(b->log, "ipc_listen_failed", "socket", NULL, "%s: %s",
+                     b->cfg.broker_socket, uv_strerror(r));
+        return TM_ERR;
     }
     b->ipc_open = true;
     chmod(b->cfg.broker_socket, 0660);
     tm_log_info(b->log, "ipc_listening", "socket", NULL, "%s", b->cfg.broker_socket);
+    return TM_OK;
 }

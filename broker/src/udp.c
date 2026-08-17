@@ -549,7 +549,10 @@ static void on_udp_packet(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf,
     (void)flags;
     tm_tunnel *tun = (tm_tunnel *)handle->data;
     tm_broker *b = tun->b;
-    if (nread <= 0) { free(buf->base); return; }
+    /* libuv reports "nothing more to read" as nread==0 with a NULL address.
+       nread==0 with an address is a real, zero-length datagram, which is legal
+       UDP and must be forwarded rather than dropped. */
+    if (nread < 0 || (nread == 0 && addr == NULL)) { free(buf->base); return; }
     if (b->shutting_down || !tun->enabled) { free(buf->base); return; }
 
     const uint8_t *data = (const uint8_t *)buf->base;
@@ -630,15 +633,17 @@ void tm_udp_start(tm_broker *b, tm_tunnel *tun) {
                 "%s port=%u", tun->id, (unsigned)tun->public_port);
 }
 
+/* See tm_tunnel_listener_stop in broker_tcp for the close_refs contract. */
 static void tunnel_udp_closed(uv_handle_t *h) {
     tm_tunnel *tun = (tm_tunnel *)h->data;
-    if (tun->deleting && --tun->close_refs == 0) free(tun);
+    tun->close_refs--;
+    if (tun->deleting && tun->close_refs == 0) free(tun);
 }
 
 void tm_udp_stop(tm_broker *b, tm_tunnel *tun) {
     if (tun->udp_open) {
         uv_udp_recv_stop(&tun->udp_sock);
-        if (tun->deleting) tun->close_refs++;
+        tun->close_refs++;
         uv_close((uv_handle_t *)&tun->udp_sock, tunnel_udp_closed);
         tun->udp_open = false;
     }
