@@ -230,6 +230,7 @@ int tm_broker_run(tm_broker *b) {
 }
 
 int main(int argc, char **argv) {
+    tm_ignore_sigpipe();
     const char *conf_path = "/etc/tunnelmate/tunnelmate.conf";
     if (argc > 1 && strcmp(argv[1], "-c") == 0 && argc > 2)
         conf_path = argv[2];

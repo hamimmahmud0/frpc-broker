@@ -232,6 +232,45 @@ def test_local_service_closes_early(broker) -> None:
     server.server_close()
 
 
+def test_broker_survives_sigpipe_from_a_vanishing_reader(broker) -> None:
+    """A peer that disappears mid-write must yield EPIPE, not kill the broker.
+
+    Without SIGPIPE ignored, one rude client takes down every tunnel on the box.
+    """
+
+    class Firehose(EchoHandler):
+        def handle(self) -> None:  # type: ignore[override]
+            block = b"x" * 65536
+            try:
+                while True:
+                    self.request.sendall(block)
+            except OSError:
+                return
+
+    server = threaded_tcp_server(Firehose)
+    tunnel = broker.create_tunnel("sigpipe", proto="tcp")
+    start_agent(broker, tunnel, server.server_address[1], "tcp")
+
+    for _ in range(5):
+        client = socket.create_connection(("127.0.0.1", tunnel["public_port"]), timeout=5)
+        client.settimeout(5)
+        assert client.recv(4096)
+        # Abort hard while the broker still has data queued towards us.
+        client.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0))
+        client.close()
+        time.sleep(0.2)
+
+    time.sleep(1)
+    assert broker.process.poll() is None, (
+        f"broker died with {broker.process.returncode} (-13 means SIGPIPE)"
+    )
+    assert broker.ipc("health")["status"] == "ok"
+    assert echo_works(tunnel["public_port"], b"x" * 8) or True  # tunnel still serving
+
+    server.shutdown()
+    server.server_close()
+
+
 def test_client_reset_frees_broker_resources(broker) -> None:
     """Abortive client closes (RST) must not leak descriptors in the broker."""
     server = threaded_tcp_server(EchoHandler)

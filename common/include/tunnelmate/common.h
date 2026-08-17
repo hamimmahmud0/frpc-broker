@@ -122,4 +122,9 @@ void *tm_xrealloc(void *p, size_t sz);
 /* Time helpers (monotonic ms). */
 uint64_t tm_now_ms(void);
 
+/* Ignore SIGPIPE so that writing to a peer that has already closed returns
+   EPIPE to the caller instead of killing the process. Every TunnelMate binary
+   must call this before opening any socket. */
+void tm_ignore_sigpipe(void);
+
 #endif

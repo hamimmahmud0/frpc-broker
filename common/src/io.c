@@ -380,21 +380,36 @@ static const struct tm_io_ops {
 
 static const struct tm_io_ops *io_ops(tm_io *io) { return &ops[io->kind]; }
 
-void tm_io_start(tm_io *io) { io_ops(io)->start(io); }
-void tm_io_handshake(tm_io *io) { if (io_ops(io)->handshake) io_ops(io)->handshake(io); }
+/* A relay leg is set to NULL the moment it is closed, and the surviving leg can
+   still have callbacks queued against it. Every entry point therefore treats a
+   NULL io as "already gone" and returns the closed-side answer rather than
+   dereferencing it. */
+void tm_io_start(tm_io *io) { if (io) io_ops(io)->start(io); }
+void tm_io_handshake(tm_io *io) {
+    if (io && io_ops(io)->handshake) io_ops(io)->handshake(io);
+}
 int tm_io_write(tm_io *io, const uint8_t *data, size_t len) {
+    if (!io) return TM_ERR;
     return io_ops(io)->write(io, data, len);
 }
-void tm_io_shutdown_send(tm_io *io) { io_ops(io)->shutdown_send(io); }
-void tm_io_pause_read(tm_io *io) { if (io_ops(io)->pause_read) io_ops(io)->pause_read(io); }
-void tm_io_resume_read(tm_io *io) { if (io_ops(io)->resume_read) io_ops(io)->resume_read(io); }
-void tm_io_set_cbs(tm_io *io, const tm_io_cbs *cbs) { io_ops(io)->set_cbs(io, cbs); }
-bool tm_io_write_available(tm_io *io) { return io_ops(io)->write_available(io); }
-size_t tm_io_pending(tm_io *io) { return io_ops(io)->pending(io); }
-bool tm_io_drained(tm_io *io) { return io_ops(io)->drained(io); }
-bool tm_io_is_open(tm_io *io) { return io_ops(io)->open(io); }
-bool tm_io_is_tls(tm_io *io) { return io_ops(io)->is_tls ? io_ops(io)->is_tls(io) : false; }
-void tm_io_close(tm_io *io) { io_ops(io)->close(io); }
+void tm_io_shutdown_send(tm_io *io) { if (io) io_ops(io)->shutdown_send(io); }
+void tm_io_pause_read(tm_io *io) {
+    if (io && io_ops(io)->pause_read) io_ops(io)->pause_read(io);
+}
+void tm_io_resume_read(tm_io *io) {
+    if (io && io_ops(io)->resume_read) io_ops(io)->resume_read(io);
+}
+void tm_io_set_cbs(tm_io *io, const tm_io_cbs *cbs) {
+    if (io) io_ops(io)->set_cbs(io, cbs);
+}
+bool tm_io_write_available(tm_io *io) { return io ? io_ops(io)->write_available(io) : false; }
+size_t tm_io_pending(tm_io *io) { return io ? io_ops(io)->pending(io) : 0; }
+bool tm_io_drained(tm_io *io) { return io ? io_ops(io)->drained(io) : true; }
+bool tm_io_is_open(tm_io *io) { return io ? io_ops(io)->open(io) : false; }
+bool tm_io_is_tls(tm_io *io) {
+    return io && io_ops(io)->is_tls ? io_ops(io)->is_tls(io) : false;
+}
+void tm_io_close(tm_io *io) { if (io) io_ops(io)->close(io); }
 
 uint64_t tm_io_write_total(tm_io *io) {
     if (!io) return 0;

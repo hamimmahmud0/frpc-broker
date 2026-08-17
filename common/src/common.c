@@ -1,6 +1,17 @@
 #include "tunnelmate/common.h"
 #include <time.h>
 #include <errno.h>
+#include <signal.h>
+
+void tm_ignore_sigpipe(void) {
+    /* A disconnected peer must surface as EPIPE on the write, not as a signal
+       that terminates the whole process and every other tunnel with it. */
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = SIG_IGN;
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGPIPE, &sa, NULL);
+}
 
 bool tm_utf8_valid(const uint8_t *s, size_t len) {
     size_t i = 0;

@@ -81,6 +81,14 @@ static void relay_a_read(tm_io *io, const uint8_t *data, size_t len, void *arg) 
     st->tun->b->rx_bytes_total += len;
     st->up_bytes += len;
     if (!st->io_b) {
+        /* A NULL agent leg means either "not bound yet" or "already gone".
+           b_eof distinguishes them: once the agent leg has ended there is
+           nothing left to flush into, so drop the stream instead of queueing
+           bytes for a bind that will never happen. */
+        if (st->b_eof) {
+            tm_stream_close(st->tun->b, st);
+            return;
+        }
         /* closed-tunnel stream: agent leg not bound yet. Queue the bytes;
            relay_start flushes them once the agent attaches. */
         if (st->preq_len + len > TM_IO_HIGH_WATER + 65536u) {
@@ -173,10 +181,11 @@ static void relay_a_low(tm_io *io, void *arg) {
     tm_stream *st = (tm_stream *)arg;
     (void)io;
     if (st->closing) return;
+    if (!st->io_a) { stream_maybe_close(st); return; }
     flush_pend(st->io_a, &st->pend_a, &st->pend_a_len, &st->pend_a_cap);
     if (st->pend_a_len) { stream_maybe_close(st); return; }
     if (st->b_eof && !st->b_fin) { st->b_fin = true; tm_io_shutdown_send(st->io_a); }
-    if (st->b_paused) {
+    if (st->b_paused && st->io_b) {
         st->b_paused = false;
         tm_io_resume_read(st->io_b);
     }
@@ -192,6 +201,12 @@ static void relay_b_read(tm_io *io, const uint8_t *data, size_t len, void *arg) 
     st->tun->tx_bytes += len;
     st->tun->b->tx_bytes_total += len;
     st->down_bytes += len;
+    if (!st->io_a) {
+        /* The consumer aborted (RST) and its leg is already closed; there is
+           nowhere to put these bytes. */
+        tm_stream_close(st->tun->b, st);
+        return;
+    }
     int r = tm_io_write(st->io_a, data, len);
     if (r == TM_ERR_BUSY) {
         if (st->pend_a_len + len > st->pend_a_cap) {
@@ -247,10 +262,11 @@ static void relay_b_low(tm_io *io, void *arg) {
     tm_stream *st = (tm_stream *)arg;
     (void)io;
     if (st->closing) return;
+    if (!st->io_b) { stream_maybe_close(st); return; }
     flush_pend(st->io_b, &st->pend_b, &st->pend_b_len, &st->pend_b_cap);
     if (st->pend_b_len) { stream_maybe_close(st); return; }
     if (st->a_eof && !st->a_fin) { st->a_fin = true; tm_io_shutdown_send(st->io_b); }
-    if (st->a_paused) {
+    if (st->a_paused && st->io_a) {
         st->a_paused = false;
         tm_io_resume_read(st->io_a);
     }

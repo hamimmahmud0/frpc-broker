@@ -127,6 +127,7 @@ static int parse_listen(tm_peer_cfg *cfg, const char *s) {
 }
 
 int main(int argc, char **argv) {
+    tm_ignore_sigpipe();
     if (argc < 2) {
         usage(stderr);
         return 1;

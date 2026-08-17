@@ -138,6 +138,7 @@ static void usage(const char *prog) {
 }
 
 int main(int argc, char **argv) {
+    tm_ignore_sigpipe();
     const char *conf_path = "/etc/tunnelmate/tunnelmate.conf";
     if (argc >= 3 && strcmp(argv[1], "-c") == 0)
         conf_path = argv[2];
