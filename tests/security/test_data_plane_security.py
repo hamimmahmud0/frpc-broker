@@ -12,6 +12,7 @@ import socket
 import ssl
 import struct
 import time
+from pathlib import Path
 
 from harness import (
     EchoHandler,
@@ -261,10 +262,7 @@ def test_secrets_are_not_visible_in_process_arguments(broker) -> None:
     peer = start_peer(broker, tunnel, tunnel["shared_token"], peer_port, "tcp")
 
     for process in (agent, peer):
-        cmdline = (
-            (broker.tmp / "x").parent  # keep the path helper import-free
-            and open(f"/proc/{process.pid}/cmdline", "rb").read().decode(errors="replace")
-        )
+        cmdline = Path(f"/proc/{process.pid}/cmdline").read_bytes().decode(errors="replace")
         assert tunnel["agent_secret"] not in cmdline
         assert tunnel["shared_token"] not in cmdline
 

@@ -8,6 +8,7 @@ into one number.
 
 from __future__ import annotations
 
+import itertools
 import os
 import socket
 import statistics
@@ -133,11 +134,8 @@ def test_udp_realtime_stream_jitter_and_order(broker_factory) -> None:
     unique = set(sequences)
     duplicates = len(sequences) - len(unique)
     lost = total - len(unique)
-    reordered = sum(1 for a, b in zip(sequences, sequences[1:], strict=False) if b < a)
-    gaps = [
-        (b - a) * 1000
-        for (_, a), (_, b) in zip(received, received[1:], strict=False)
-    ]
+    reordered = sum(1 for a, b in itertools.pairwise(sequences) if b < a)
+    gaps = [(b - a) * 1000 for (_, a), (_, b) in itertools.pairwise(received)]
     jitter = statistics.pstdev(gaps) if len(gaps) > 1 else 0.0
 
     print(

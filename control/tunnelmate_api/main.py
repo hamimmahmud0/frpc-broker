@@ -17,7 +17,13 @@ from urllib.parse import parse_qs
 import uvicorn
 from fastapi import FastAPI, Header, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import (
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    RedirectResponse,
+    StreamingResponse,
+)
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -25,6 +31,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from .broker import BrokerClient, BrokerError, BrokerUnavailable
 from .config import Settings
 from .db import Database
+from .metrics import SystemMetrics
 from .models import (
     AdminAnnouncementPatch,
     AnnouncementCreate,
@@ -111,6 +118,21 @@ async def restore_runtime(app: FastAPI) -> None:
             continue
 
 
+async def metrics_sampler(app: FastAPI) -> None:
+    """Sample host and broker state into the bounded in-memory series."""
+    interval = app.state.settings.metrics_interval_seconds
+    while True:
+        try:
+            status = (await app.state.broker.call("get_status")).get("now", {})
+        except (BrokerError, BrokerUnavailable):
+            status = {}
+        try:
+            app.state.metrics.collect(status)
+        except OSError:
+            pass
+        await asyncio.sleep(interval)
+
+
 async def lease_reaper(app: FastAPI) -> None:
     while True:
         await asyncio.sleep(30)
@@ -141,12 +163,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             bootstrap_admin(app.state.db, settings.admin_username, settings.admin_password)
         await restore_runtime(app)
         reaper = asyncio.create_task(lease_reaper(app))
+        sampler = asyncio.create_task(metrics_sampler(app))
         yield
-        reaper.cancel()
-        try:
-            await reaper
-        except asyncio.CancelledError:
-            pass
+        for task in (reaper, sampler):
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
         app.state.db.close()
 
     docs_url = "/docs" if settings.docs_enabled else None
@@ -164,6 +188,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.db = Database(settings.db_path)
     app.state.broker = BrokerClient(settings.broker_socket)
+    app.state.metrics = SystemMetrics(history=settings.metrics_history)
     app.state.create_rate = RateWindow()
     app.state.login_rate = RateWindow()
     app.state.templates = Jinja2Templates(directory=str(BASE / "templates"))
@@ -829,6 +854,88 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 {**runtime, "announcements": by_tunnel.get(tid, [])}
                 for tid, runtime in runtimes.items()
             ],
+        }
+
+    @app.get("/v1/admin/system", operation_id="admin_system_metrics")
+    async def admin_system(request: Request, history: int = 60) -> dict[str, Any]:
+        """Host and broker health for the operations console.
+
+        Served from the bounded in-memory series so a poll never touches disk.
+        """
+        require_admin(request)
+        metrics: SystemMetrics = app.state.metrics
+        if not metrics.samples:
+            try:
+                status = (await app.state.broker.call("get_status")).get("now", {})
+            except (BrokerError, BrokerUnavailable):
+                status = {}
+            metrics.collect(status)
+        return {
+            "current": metrics.latest(),
+            "series": metrics.series(limit=max(1, min(history, metrics.history))),
+            "interval_seconds": settings.metrics_interval_seconds,
+        }
+
+    @app.get("/v1/admin/system/stream", operation_id="admin_system_stream")
+    async def admin_system_stream(request: Request, events: int = 0) -> Any:
+        """Server-sent events carrying each new sample.
+
+        Updates only flow one way, so SSE avoids a WebSocket dependency. Pass
+        ``events=N`` to close after N frames, which gives `curl` (and the tests)
+        a form of the endpoint that terminates on its own.
+        """
+        require_admin(request)
+        metrics: SystemMetrics = app.state.metrics
+        interval = settings.metrics_interval_seconds
+        budget = max(0, min(events, 1000))
+
+        async def event_stream() -> AsyncIterator[bytes]:
+            last_at = 0
+            sent = 0
+            # The first frame goes out immediately so the console paints without
+            # waiting a whole interval.
+            while True:
+                if await request.is_disconnected():
+                    return
+                current = metrics.latest()
+                if current is None:
+                    current = metrics.collect({})
+                    current = metrics.latest()
+                if current and current["at"] != last_at:
+                    last_at = current["at"]
+                    yield f"data: {json.dumps(current, separators=(',', ':'))}\n\n".encode()
+                    sent += 1
+                else:
+                    yield b": keepalive\n\n"
+                if budget and sent >= budget:
+                    return
+                await asyncio.sleep(max(1, interval))
+
+        return StreamingResponse(
+            event_stream(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+        )
+
+    @app.get("/v1/admin/tunnels/{tunnel_id}/streams", operation_id="admin_list_streams")
+    async def admin_list_streams(tunnel_id: str, request: Request) -> dict[str, Any]:
+        """Per-tunnel runtime detail, including the live stream/flow count."""
+        require_admin(request)
+        row = (
+            app.state.db.connect()
+            .execute("SELECT * FROM tunnels WHERE tunnel_id=? AND deleted=0", (tunnel_id,))
+            .fetchone()
+        )
+        if row is None:
+            raise APIError(404, "TUNNEL_NOT_FOUND", "Tunnel was not found.")
+        runtimes, _ = await runtime_map()
+        runtime = runtimes.get(tunnel_id, {})
+        return {
+            "tunnel": tunnel_public(row, runtime),
+            "runtime": runtime,
+            "streams_active": int(runtime.get("streams_active", 0)),
+            "streams_total": int(runtime.get("streams_total", 0)),
+            "protocol": row["protocol"],
         }
 
     @app.patch("/v1/admin/tunnels/{tunnel_id}", operation_id="admin_update_tunnel")

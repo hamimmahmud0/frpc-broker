@@ -30,6 +30,10 @@ class Settings:
     max_attribute_keys: int
     admin_username: str | None
     admin_password: str | None
+    # Bounded in-memory metric history for the console: interval x history is
+    # the visible window, and the whole series is a few hundred KiB.
+    metrics_interval_seconds: int = 5
+    metrics_history: int = 240
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -58,4 +62,6 @@ class Settings:
             max_attribute_keys=int(os.getenv("TUNNELMATE_MAX_ATTRIBUTE_KEYS", "128")),
             admin_username=os.getenv("TUNNELMATE_ADMIN_USERNAME"),
             admin_password=os.getenv("TUNNELMATE_ADMIN_PASSWORD"),
+            metrics_interval_seconds=int(os.getenv("TUNNELMATE_METRICS_INTERVAL", "5")),
+            metrics_history=int(os.getenv("TUNNELMATE_METRICS_HISTORY", "240")),
         )

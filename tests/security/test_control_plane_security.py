@@ -21,9 +21,9 @@ sys.path.insert(0, str(ROOT / "control" / "tests"))
 
 pytest.importorskip("fastapi", reason="control-plane dependencies are not installed")
 
-from test_api import FakeBroker, settings  # noqa: E402
-from tunnelmate_api.main import create_app  # noqa: E402
-from tunnelmate_api.security import (  # noqa: E402
+from test_api import FakeBroker, settings
+from tunnelmate_api.main import create_app
+from tunnelmate_api.security import (
     bootstrap_admin,
     hash_password,
     verify_password,

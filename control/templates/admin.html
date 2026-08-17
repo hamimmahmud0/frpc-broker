@@ -21,6 +21,26 @@
       <div><span>UDP drops</span><b>{{ broker.get('udp_dropped_queue_full', 0) + broker.get('udp_dropped_rate_limit', 0) }}</b></div>
     </section>
     <section>
+      <div class="toolbar">
+        <h1>System</h1>
+        <span id="system-status" class="muted">connecting…</span>
+      </div>
+      <div class="metrics wide" id="system-tiles">
+        <div><span>CPU</span><b data-k="cpu">–</b><i data-spark="cpu"></i></div>
+        <div><span>RAM used</span><b data-k="mem">–</b><i data-spark="mem"></i></div>
+        <div><span>disk used</span><b data-k="disk">–</b></div>
+        <div><span>load 1m</span><b data-k="load">–</b></div>
+        <div><span>broker RSS</span><b data-k="brss">–</b><i data-spark="brss"></i></div>
+        <div><span>broker FDs</span><b data-k="bfd">–</b></div>
+        <div><span>API RSS</span><b data-k="arss">–</b></div>
+        <div><span>RX/s</span><b data-k="rxr">–</b><i data-spark="rxr"></i></div>
+        <div><span>TX/s</span><b data-k="txr">–</b><i data-spark="txr"></i></div>
+        <div><span>conns/s</span><b data-k="cps">–</b></div>
+        <div><span>reconnects</span><b data-k="rec">–</b></div>
+        <div><span>proto errors</span><b data-k="perr">–</b></div>
+      </div>
+    </section>
+    <section>
       <div class="toolbar"><h1>Announcements</h1></div>
       <div class="table-wrap">
         <table id="announcements">
@@ -57,7 +77,7 @@
               <td>{{ tunnel.protocol|upper }}</td>
               <td>{{ tunnel.scope }}</td>
               <td><code>{{ tunnel.peer_address }}</code></td>
-              <td>{{ tunnel.active_streams }}</td>
+              <td><button class="inspect" data-id="{{ tunnel.tunnel_id }}" title="inspect streams/flows">{{ tunnel.active_streams }}</button></td>
               <td>{{ tunnel.rx_bytes }}</td><td>{{ tunnel.tx_bytes }}</td>
               <td><time data-epoch="{{ tunnel.expires_at }}">{{ tunnel.expires_at }}</time></td>
               <td><button class="danger delete-tunnel" data-id="{{ tunnel.tunnel_id }}">delete</button></td>
@@ -72,6 +92,11 @@
       <pre id="topology">loading…</pre>
     </section>
   </main>
+  <dialog id="inspect">
+    <div class="toolbar"><h1 id="inspect-title">Tunnel</h1><button id="inspect-close">close</button></div>
+    <pre id="inspect-body">loading…</pre>
+  </dialog>
+  <div hidden></div>
   <script src="/static/admin.js" defer></script>
 </body>
 </html>

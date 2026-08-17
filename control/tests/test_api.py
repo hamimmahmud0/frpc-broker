@@ -7,6 +7,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from tunnelmate_api.broker import BrokerError
 from tunnelmate_api.config import Settings
 from tunnelmate_api.main import create_app
 from tunnelmate_api.security import bootstrap_admin
@@ -68,6 +69,9 @@ class FakeBroker:
             return {"status": "ok"}
         if op in {"enable_tunnel", "disable_tunnel"}:
             return {"status": "ok"}
+        if op == "kill_stream":
+            # The runtime broker rejects unknown stream ids; mirror that.
+            raise BrokerError("stream not found")
         if op.startswith("rotate_"):
             secret = "rotated-value-0123456789012345"
             return {"status": "ok", "secret": secret, "secret_hmac": self.digest(secret)}
