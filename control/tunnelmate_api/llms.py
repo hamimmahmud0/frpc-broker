@@ -130,15 +130,17 @@ def render(settings: Settings, base_url: str) -> str:
     download_section = (
         _download_steps(base_url, version, arches) if version else _no_downloads_notice(base_url)
     )
+    # Hard-wrapped to match the rest of the document; a single long line here
+    # would be the only one in the file that does not wrap.
     how_to_get_it = (
-        "The binary is written in C, but this broker publishes pre-built ones — "
-        "statically linked, so they run on any Linux of the right architecture "
-        "with nothing installed alongside them. Step 1 downloads one; building "
+        "The binary is written in C, but this broker publishes pre-built ones —\n"
+        "statically linked, so they run on any Linux of the right architecture\n"
+        "with nothing installed alongside them. Step 1 downloads one; building\n"
         "from source is offered as step 2 and is not required."
         if version
-        else "The binary is written in C and this deployment publishes no "
-        "pre-built ones, so you compile it from source once (about a minute). "
-        "Step 2 does exactly that."
+        else "The binary is written in C and this deployment publishes no pre-built\n"
+        "ones, so you compile it from source once (about a minute). Step 2 does\n"
+        "exactly that."
     )
 
     return f"""# TunnelMate
@@ -176,7 +178,9 @@ Read this before starting, because it decides how much work you are in for.
 
 **To publish a service you must run the `tunnelmate-agent` binary.** There is
 no pure-Python, browser or curl-only way to do it: the HTTP API creates the
-tunnel, but only the agent can carry traffic. {how_to_get_it}
+tunnel, but only the agent can carry traffic.
+
+{how_to_get_it}
 
 **To consume an `open` tunnel you install nothing.** It is an ordinary public
 TCP or UDP address. Use curl, a browser, psql, ssh, netcat, anything.
