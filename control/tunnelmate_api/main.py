@@ -82,8 +82,46 @@ def public_id(prefix: str, bytes_: int = 12) -> str:
     return prefix + secrets.token_urlsafe(bytes_).rstrip("=")
 
 
+# Only a request arriving from one of these is allowed to name a different
+# client via X-Forwarded-For. The API binds loopback and the reverse proxy is
+# the only thing in front of it, so anything else is talking to us directly and
+# its socket address is the truth.
+_TRUSTED_PROXIES = frozenset({"127.0.0.1", "::1", "::ffff:127.0.0.1"})
+
+
 def client_ip(request: Request) -> str:
-    return request.client.host if request.client else "unknown"
+    """The address the per-IP abuse controls should be charged against.
+
+    Behind a proxy every request's socket address is the proxy's, so using it
+    directly collapses `create_rate_per_minute` and `max_tunnels_per_ip` into
+    one global bucket: twenty live tunnels anywhere lock out the whole
+    Internet, which is not a limit anyone chose.
+
+    The rightmost X-Forwarded-For entry is the one used, not the leftmost. A
+    proxy *appends* the peer it actually saw, so the entries to its left are
+    whatever the client sent and are trivially forged; trusting the leftmost
+    would let any caller pick an unused address per request and bypass every
+    limit here.
+    """
+    peer = request.client.host if request.client else "unknown"
+    if peer not in _TRUSTED_PROXIES:
+        return peer
+    forwarded = request.headers.get("x-forwarded-for", "")
+    hops = [hop.strip() for hop in forwarded.split(",") if hop.strip()]
+    if not hops:
+        return peer
+    candidate = hops[-1]
+    try:
+        # Parsed, not just trimmed, so a junk header cannot become a database
+        # key or a rate-limit bucket of its own.
+        address = ipaddress.ip_address(candidate)
+    except ValueError:
+        return peer
+    # ::ffff:203.0.113.7 and 203.0.113.7 are the same caller and must share one
+    # quota rather than hold two.
+    if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped:
+        address = address.ipv4_mapped
+    return str(address)
 
 
 def row_dict(row: Any) -> dict[str, Any]:

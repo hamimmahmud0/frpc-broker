@@ -115,6 +115,21 @@ installer. Example: [deployment/example.env](../deployment/example.env).
 | `TUNNELMATE_MAX_ATTRIBUTE_DEPTH` | `6` | Attribute nesting. |
 | `TUNNELMATE_MAX_ATTRIBUTE_KEYS` | `128` | Attribute key count. |
 
+The two per-IP limits depend on the proxy sending `X-Forwarded-For`, which
+Caddy's `reverse_proxy` and nginx's `proxy_set_header` do by default. Without
+it every request looks like it came from the proxy itself, and both limits
+collapse into one global bucket — the twentieth live tunnel anywhere would
+lock out every other caller.
+
+Only the **rightmost** entry of that header is used, and only when the request
+arrives from loopback. A proxy appends the peer it actually saw, so entries to
+its left are whatever the client sent and are forgeable.
+
+One consequence worth knowing: with a CDN in front of your proxy, the address
+charged is the CDN edge's, so all traffic through one edge shares a quota.
+Raise the limits, or have the CDN pass the origin address in a header your
+proxy converts.
+
 ### Metrics
 
 | Variable | Default | Meaning |

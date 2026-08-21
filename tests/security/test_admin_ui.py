@@ -513,3 +513,107 @@ def test_llms_txt_never_advertises_a_download_that_does_not_exist(
     assert "/v1/download/tunnelmate-" not in body
     # The build route must still be fully present as the way forward.
     assert "git clone" in body and "cmake -S . -B build" in body
+
+
+def _request(peer: str, forwarded: str | None = None):
+    """A bare Request with a chosen socket peer and X-Forwarded-For."""
+    from starlette.requests import Request
+
+    headers = [(b"host", b"broker.test")]
+    if forwarded is not None:
+        headers.append((b"x-forwarded-for", forwarded.encode()))
+    return Request(
+        {
+            "type": "http",
+            "method": "GET",
+            "path": "/",
+            "query_string": b"",
+            "headers": headers,
+            "client": (peer, 40000),
+            "scheme": "http",
+            "server": ("127.0.0.1", 9000),
+        }
+    )
+
+
+def test_client_ip_ignores_forwarded_header_from_an_untrusted_peer() -> None:
+    """Anyone reaching the API directly can write whatever they like there.
+
+    Honouring it would let a caller pick a fresh address per request and walk
+    straight past every per-IP limit.
+    """
+    from tunnelmate_api.main import client_ip
+
+    assert client_ip(_request("203.0.113.9", "198.51.100.1")) == "203.0.113.9"
+
+
+def test_client_ip_uses_the_proxys_forwarded_address() -> None:
+    """The whole point: behind a proxy the socket peer is always the proxy."""
+    from tunnelmate_api.main import client_ip
+
+    assert client_ip(_request("127.0.0.1", "198.51.100.1")) == "198.51.100.1"
+
+
+def test_client_ip_takes_the_rightmost_hop_not_the_leftmost() -> None:
+    """A proxy appends; everything to its left came from the client.
+
+    Here the client sent "1.2.3.4" and Caddy appended the address it really
+    saw. Trusting the leftmost entry would reinstate the spoof this function
+    exists to prevent.
+    """
+    from tunnelmate_api.main import client_ip
+
+    assert client_ip(_request("127.0.0.1", "1.2.3.4, 198.51.100.1")) == "198.51.100.1"
+
+
+def test_client_ip_falls_back_when_the_header_is_absent_or_junk() -> None:
+    """A direct hit on the loopback port, or a mangled header, must not 500."""
+    from tunnelmate_api.main import client_ip
+
+    assert client_ip(_request("127.0.0.1")) == "127.0.0.1"
+    assert client_ip(_request("127.0.0.1", "not-an-address")) == "127.0.0.1"
+    assert client_ip(_request("127.0.0.1", " , ")) == "127.0.0.1"
+
+
+def test_client_ip_folds_ipv4_mapped_form_into_one_bucket() -> None:
+    """Otherwise one caller holds two independent quotas."""
+    from tunnelmate_api.main import client_ip
+
+    assert client_ip(_request("127.0.0.1", "::ffff:203.0.113.7")) == "203.0.113.7"
+
+
+def test_per_ip_tunnel_limit_is_per_ip_and_not_global(tmp_path: Path) -> None:
+    """The failure this fixes: one caller's tunnels locked out everyone else.
+
+    With the proxy's address charged for every request, max_tunnels_per_ip
+    became a global ceiling — the twentieth live tunnel anywhere on the
+    Internet made the API refuse the next caller, whoever they were.
+    """
+    conf = settings(tmp_path)
+    conf.max_tunnels_per_ip = 2
+    app = create_app(conf)
+    app.state.broker = FakeBroker()
+    app.state.db.initialize()
+
+    with TestClient(app, client=("127.0.0.1", 40000)) as client:
+        noisy = {"X-Forwarded-For": "198.51.100.1"}
+        for _ in range(conf.max_tunnels_per_ip):
+            created = client.post(
+                "/v1/tunnels", json={"scope": "open", "protocol": "tcp"}, headers=noisy
+            )
+            assert created.status_code == 201
+
+        exhausted = client.post(
+            "/v1/tunnels", json={"scope": "open", "protocol": "tcp"}, headers=noisy
+        )
+        assert exhausted.status_code == 429
+        assert exhausted.json()["error"]["code"] == "TUNNEL_LIMIT"
+
+        # A different caller is unaffected. This is the assertion that fails
+        # against the old behaviour.
+        other = client.post(
+            "/v1/tunnels",
+            json={"scope": "open", "protocol": "tcp"},
+            headers={"X-Forwarded-For": "203.0.113.7"},
+        )
+        assert other.status_code == 201
