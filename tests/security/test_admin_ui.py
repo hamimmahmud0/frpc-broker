@@ -199,6 +199,15 @@ def test_console_assets_are_self_hosted(client: TestClient) -> None:
         assert response.content
 
 
+def test_console_contains_wide_tables_inside_the_viewport(client: TestClient) -> None:
+    """Wide table content must scroll locally instead of widening the page."""
+    login(client)
+    css = client.get("/static/admin.css").text
+    assert "grid-template-columns:minmax(0,1fr)" in css
+    assert "section{min-width:0" in css
+    assert ".table-wrap{width:100%;max-width:100%;overflow:auto" in css
+
+
 def test_topology_reports_protocol_and_counts(client: TestClient) -> None:
     login(client)
     tunnel = make_tunnel(client, "udp")
